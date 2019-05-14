@@ -21,7 +21,7 @@ def save_list(save_path, data_list):
     with open(save_path, 'w') as f:
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
-	
+
 
 def save_images_from_batch(img_batch, save_dir, init_no):
     if img_batch.shape[-1] == 3:
@@ -38,7 +38,7 @@ def save_images_from_batch(img_batch, save_dir, init_no):
             image.save(os.path.join(save_dir, 'result_%05d.png' % (init_no + i)), 'PNG')
     return None
 
-		
+
 def compute_color_psnr(im_batch1, im_batch2):
     mean_psnr = 0
     im_batch1 = im_batch1.squeeze()
@@ -84,3 +84,22 @@ def calc_psnr(im1, im2):
         return 100
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+
+
+def add_random_noise(w, mean=0.0, stddev=1.0):
+    ''' Add noise to weights of model
+    Args:
+        w (vector): weights
+        mean (float): mean
+        stddev (float): standard deviation
+    Returns:
+        updated values of the weights
+    '''
+    variables_shape = tf.shape(w)
+    noise = tf.random_normal(
+        variables_shape,
+        mean=mean,
+        stddev=stddev,
+        dtype=tf.float32,
+    )
+    return tf.assign_add(w, noise)

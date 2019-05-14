@@ -4,12 +4,14 @@ import datetime, time, scipy.io
 from model import *
 from util import *
 
+import cv2
+
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
 out_channels = 3
-n_epochs1 = 90
-n_epochs2 = 30
-batch_size = 8
+n_epochs1 = 1
+n_epochs2 = 1
+batch_size = 1
 learning_rate = 0.0002
 beta1 = 0.9
 
@@ -18,15 +20,29 @@ save_epochs = 10
 src_suffix = 'target'
 dst_suffix = 'target'
 
+img_shape = (512,512) # default 256
+SAVE_GREYSCALE_CV2 = True
 
 def gen_list(data_dir):
-    file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
+    # file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
+    file_list = glob.glob(os.path.join(data_dir, '*.*'))
     file_list.sort()
     file_pair_list = []
-    for path1 in file_list:
-        path2 = path1.replace(src_suffix, dst_suffix)
-        path12 = path1 + ' ' + path2
-        file_pair_list.append(path12)
+    for i, path1 in enumerate(file_list):
+        # path2 = path1.replace(src_suffix, dst_suffix)
+        # path12 = path1 + ' ' + path2
+        # file_pair_list.append(path12)
+        from PIL import Image
+        img = Image.open(path1)
+        img = img.resize(img_shape, Image.ANTIALIAS)
+        img.save(path1)
+        if SAVE_GREYSCALE_CV2: # save cv2 greyscale image
+            save_dir_test_gray_cv2 = os.path.join("./output/results/gray_cv2")
+            exists_or_mkdir(save_dir_test_gray_cv2)
+            orig_img = cv2.imread(path1)
+            gray_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2GRAY)
+            cv2.imwrite(os.path.join(save_dir_test_gray_cv2, 'result_cv2_gray_%05d.png' % (i)), gray_img)
+        file_pair_list.append(path1)
     return file_pair_list
 
 
@@ -53,25 +69,25 @@ def train(train_list, val_list, debug_mode=True):
 
     # --------------------------------- loss terms ---------------------------------
     with tf.name_scope('Loss'):
-        
+
         target_224 = tf.image.resize_images(target_imgs, size=[224, 224], method=0, align_corners=False)
         predict_224 = tf.image.resize_images(latent_imgs, size=[224, 224], method=0, align_corners=False)
-        vgg19_api = VGG19("../vgg19.npy")
+        vgg19_api = VGG19("/Users/irisliu/Downloads/vgg19.npy")
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
         # stretch the global contrast to follow color contrast
         vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
-        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/256**2)
-        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/256**2)
+        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/img_shape[0]**2)
+        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/img_shape[0]**2)
         grads_loss = tf.abs(latent_grads-target_grads)
         # control the mapping order similar to normal rgb2gray
         global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
         # quantization loss
-        latent_stack = tf.concat([latent_imgs for t in range(256)], axis=3)
+        latent_stack = tf.concat([latent_imgs for t in range(img_shape[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
-        quant_stack = np.concatenate([id_mat * t for t in range(256)], axis=3)
+        quant_stack = np.concatenate([id_mat * t for t in range(img_shape[0])], axis=3)
         quant_stack = (quant_stack / 127.5) - 1
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
@@ -225,13 +241,15 @@ def train(train_list, val_list, debug_mode=True):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    save_dir_test = os.path.join("./output/results")
-    exists_or_mkdir(save_dir_test)
-	
+    save_dir_test_gray = os.path.join("./output/results/invertible_gray")
+    save_dir_test_color = os.path.join("./output/results/color")
+    exists_or_mkdir(save_dir_test_color)
+    exists_or_mkdir(save_dir_test_gray)
+
 	# ------------- Running Options
     # if run encoder, 3 channel RGB image should be provided in the 'test_list'
 	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
-    RUN_Encoder = False
+    RUN_Encoder = True
 
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
@@ -247,7 +265,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = 10
+    num = 20
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -268,12 +286,26 @@ def evaluate(test_list, checkpoint_dir):
         while not coord.should_stop():
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
+            # # TODO: Add noise
+            # add noise to weights
+            # for w in list_of_weights:
+            #     sess.run(add_random_noise(w))
+
+            # add noise to image
+            # def add_gaussian_noise(image):
+            #     # image must be scaled in [0, 1]
+            #     with tf.name_scope('Add_gaussian_noise'):
+            #         noise = tf.random_normal(shape=tf.shape(image), mean=0.0, stddev=(50)/(255), dtype=tf.float32)
+            #         noise_img = image + noise
+            #         noise_img = tf.clip_by_value(noise_img, 0.0, 1.0)
+            #     return noise_img
+
             if RUN_Encoder:			# save the synthesized invertible grayscale
-                gray_imgs = sess.run(latent_imgs)
-                save_images_from_batch(gray_imgs, save_dir_test, cnt)
+                invertible_gray_imgs = sess.run(latent_imgs)
+                save_images_from_batch(invertible_gray_imgs, save_dir_test_gray, cnt)
             else:							# save the restored color images
                 color_imgs = sess.run(restored_imgs)
-                save_images_from_batch(color_imgs, save_dir_test, cnt)
+                save_images_from_batch(color_imgs, save_dir_test_color, cnt)
 
             cnt += batch_size
             if cnt >= num:
@@ -286,19 +318,22 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_list = gen_list('../Dataset/VOC2012/')
-        val_list = gen_list('../Dataset/color_val/')
+        # train_list = gen_list('../Dataset/VOC2012/')
+        # val_list = gen_list('../Dataset/color_val/')
+        train_list = ('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train')
+        val_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
         train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        #test_list = gen_list('./InputColor/')
-        test_list = gen_list('./InvertibelGray/')
+        test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
+        # test_list = gen_list('/Users/irisliu/Documents/cityu_research/InvertibelGrayscale/data/grey')
+        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:
