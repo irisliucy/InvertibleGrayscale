@@ -83,3 +83,22 @@ def calc_psnr(im1, im2):
         return 100
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+
+
+def add_random_noise(w, mean=0.0, stddev=1.0):
+    ''' Add noise to weights of model
+    Args:
+        w (vector): weights
+        mean (float): mean
+        stddev (float): standard deviation
+    Returns:
+        updated values of the weights
+    '''
+    variables_shape = tf.shape(w)
+    noise = tf.random_normal(
+        variables_shape,
+        mean=mean,
+        stddev=stddev,
+        dtype=tf.float32,
+    )
+    return tf.assign_add(w, noise)

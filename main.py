@@ -6,12 +6,14 @@ from model import *
 from util import *
 import os
 
+import cv2
+
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
 out_channels = 3
-n_epochs1 = 90
-n_epochs2 = 30
-batch_size = 8
+n_epochs1 = 1
+n_epochs2 = 1
+batch_size = 1
 learning_rate = 0.0002
 beta1 = 0.9
 
@@ -252,13 +254,15 @@ def train(train_list, val_list, debug_mode=True):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    save_dir_test = os.path.join("./output/results")
-    exists_or_mkdir(save_dir_test)
+    save_dir_test_gray = os.path.join("./output/results/invertible_gray")
+    save_dir_test_color = os.path.join("./output/results/color")
+    exists_or_mkdir(save_dir_test_color)
+    exists_or_mkdir(save_dir_test_gray)
 
 	# ------------- Running Options
     # if run encoder, 3 channel RGB image should be provided in the 'test_list'
 	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
-    RUN_Encoder = False
+    RUN_Encoder = True
 
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
@@ -274,7 +278,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = 10
+    num = 20
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -295,12 +299,26 @@ def evaluate(test_list, checkpoint_dir):
         while not coord.should_stop():
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
+            # # TODO: Add noise
+            # add noise to weights
+            # for w in list_of_weights:
+            #     sess.run(add_random_noise(w))
+
+            # add noise to image
+            # def add_gaussian_noise(image):
+            #     # image must be scaled in [0, 1]
+            #     with tf.name_scope('Add_gaussian_noise'):
+            #         noise = tf.random_normal(shape=tf.shape(image), mean=0.0, stddev=(50)/(255), dtype=tf.float32)
+            #         noise_img = image + noise
+            #         noise_img = tf.clip_by_value(noise_img, 0.0, 1.0)
+            #     return noise_img
+
             if RUN_Encoder:			# save the synthesized invertible grayscale
-                gray_imgs = sess.run(latent_imgs)
-                save_images_from_batch(gray_imgs, save_dir_test, cnt)
+                invertible_gray_imgs = sess.run(latent_imgs)
+                save_images_from_batch(invertible_gray_imgs, save_dir_test_gray, cnt)
             else:							# save the restored color images
                 color_imgs = sess.run(restored_imgs)
-                save_images_from_batch(color_imgs, save_dir_test, cnt)
+                save_images_from_batch(color_imgs, save_dir_test_color, cnt)
 
             cnt += batch_size
             if cnt >= num:
@@ -324,8 +342,9 @@ if __name__ == "__main__":
         val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         train(train_list, val_list, debug_mode=False)
     elif args.mode == 'test':
-        #test_list = gen_list('./InputColor/')
-        test_list = gen_list('./InvertibelGray/')
+        test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
+        # test_list = gen_list('/Users/irisliu/Documents/cityu_research/InvertibelGrayscale/data/grey')
+        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:
