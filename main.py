@@ -9,9 +9,9 @@ import cv2
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
 out_channels = 3
-n_epochs1 = 1
-n_epochs2 = 1
-batch_size = 1
+n_epochs1 = 90
+n_epochs2 = 30
+batch_size = 8
 learning_rate = 0.0002
 beta1 = 0.9
 
@@ -20,28 +20,27 @@ save_epochs = 10
 src_suffix = 'target'
 dst_suffix = 'target'
 
-img_shape = (512,512) # default 256
+img_shape = (1024,1024) # default 256
 SAVE_GREYSCALE_CV2 = True
+NUMBER_OF_SAMPLES = 20
 
 def gen_list(data_dir):
-    # file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
     file_list = glob.glob(os.path.join(data_dir, '*.*'))
     file_list.sort()
     file_pair_list = []
     for i, path1 in enumerate(file_list):
-        # path2 = path1.replace(src_suffix, dst_suffix)
-        # path12 = path1 + ' ' + path2
-        # file_pair_list.append(path12)
-        from PIL import Image
-        img = Image.open(path1)
-        img = img.resize(img_shape, Image.ANTIALIAS)
-        img.save(path1)
-        if SAVE_GREYSCALE_CV2: # save cv2 greyscale image
-            save_dir_test_gray_cv2 = os.path.join("./output/results/gray_cv2")
-            exists_or_mkdir(save_dir_test_gray_cv2)
-            orig_img = cv2.imread(path1)
-            gray_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2GRAY)
-            cv2.imwrite(os.path.join(save_dir_test_gray_cv2, 'result_cv2_gray_%05d.png' % (i)), gray_img)
+        if i < NUMBER_OF_SAMPLES:
+            from PIL import Image
+            img = Image.open(path1)
+            img = img.resize(img_shape, Image.ANTIALIAS)
+            print('Saving to {}'.format(path1))
+            img.save(path1)
+            if SAVE_GREYSCALE_CV2: # save cv2 greyscale image
+                save_dir_test_gray_cv2 = os.path.join("./output/results/gray_cv2")
+                exists_or_mkdir(save_dir_test_gray_cv2)
+                orig_img = cv2.imread(path1)
+                gray_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2GRAY)
+                cv2.imwrite(os.path.join(save_dir_test_gray_cv2, 'result_cv2_gray_%05d.png' % (i)), gray_img)
         file_pair_list.append(path1)
     return file_pair_list
 
@@ -265,7 +264,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = 20
+    num = NUMBER_OF_SAMPLES
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -318,22 +317,21 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
-        # train_list = gen_list('../Dataset/VOC2012/')
-        # val_list = gen_list('../Dataset/color_val/')
-        train_list = ('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train')
-        val_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
+        # train_list = ('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train')
+        # val_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
+        train_list = ('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
+        val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
-        # test_list = gen_list('/Users/irisliu/Documents/cityu_research/InvertibelGrayscale/data/grey')
-        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
+        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
+        test_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:

@@ -4,8 +4,8 @@ import random
 
 CROP_SIZE = 224
 
-img_width = 512
-img_heigh = 512
+img_width = 1024
+img_heigh = 1024
 
 # --------------------------------- LALER FUNCTION ----------------------------------------- #
 def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME', name='conv'):
@@ -78,7 +78,6 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
 
     def read_data(data_queue):
         # note : read one training data : pixel range : [0, 255]
-        print(data_queue)
         in_img = tf.image.decode_image(tf.read_file(data_queue[0]), channels=channels)
         gt_img = tf.image.decode_image(tf.read_file(data_queue[1]), channels=channels)
 
