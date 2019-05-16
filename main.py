@@ -261,14 +261,14 @@ def train(train_list, val_list, debug_mode=True):
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
     save_dir_test_gray = os.path.join("./output/results/invertible_gray")
-    save_dir_test_color = os.path.join("./output/results/color")
+    save_dir_test_color = os.path.join("./output/results/restored_rgb")
     exists_or_mkdir(save_dir_test_color)
     exists_or_mkdir(save_dir_test_gray)
 
 	# ------------- Running Options
     # if run encoder, 3 channel RGB image should be provided in the 'test_list'
 	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
-    RUN_Encoder = True
+    RUN_Encoder = False
 
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
@@ -348,7 +348,10 @@ if __name__ == "__main__":
         val_list = gen_list(DIR_TO_TEST_SET)
         train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        test_list = gen_list(DIR_TO_TEST_SET)
+        # test_list = gen_list(DIR_TO_TEST_SET)
+        exists_or_mkdir(DIR_TO_TEST_SET + '/test')
+        generate_rgb_gradient_image(img_shape, DIR_TO_TEST_SET + '/test')
+        test_list = gen_list(DIR_TO_TEST_SET+ '/test')
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:

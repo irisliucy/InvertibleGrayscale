@@ -104,3 +104,21 @@ def add_random_noise(w, mean=0.0, stddev=1.0):
         dtype=tf.float32,
     )
     return tf.assign_add(w, noise)
+
+def generate_rgb_gradient_image(img_shape, img_dir):
+    import math
+    from PIL import Image
+    im = Image.new('RGB', img_shape)
+    ld = im.load()
+
+    def gaussian(x, a, b, c, d=0):
+        return a * math.exp(-(x - b)**2 / (2 * c**2)) + d
+
+    for x in range(im.size[0]):
+        r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
+        g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
+        b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
+        for y in range(im.size[1]):
+            ld[x, y] = (r, g, b)
+
+    im.save(os.path.join(img_dir, 'color_gradient'), 'PNG')
