@@ -7,8 +7,8 @@ import config
 
 CROP_SIZE = 224
 
-img_width = 1024
-img_heigh = 1024
+img_width = 512
+img_heigh = 512
 
 # --------------------------------- LALER FUNCTION ----------------------------------------- #
 def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME', name='conv'):
