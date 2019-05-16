@@ -5,6 +5,8 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
+import config
+
 
 def exists_or_mkdir(path, need_remove=False):
     if not os.path.exists(path):
@@ -88,7 +90,7 @@ def calc_psnr(im1, im2):
 def add_random_noise(w, mean=0.0, stddev=1.0):
     ''' Add noise to weights of model
     Args:
-        w (vector): weights
+        w (tf.Varaible): weights
         mean (float): mean
         stddev (float): standard deviation
     Returns:

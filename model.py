@@ -3,6 +3,8 @@ from util import *
 import random
 from tfrecords import *
 
+import config
+
 CROP_SIZE = 224
 
 img_width = 1024
@@ -230,7 +232,7 @@ class VGG19:
         if vgg19_npy_path is None:
             print("Please download vgg19.npz from : https://github.com/machrisaa/tensorflow-vgg")
             exit()
-        self.data_dict = np.load(vgg19_npy_path, encoding='latin1').item()
+        self.data_dict = np.load(vgg19_npy_path, allow_pickle=True, encoding='latin1').item()
         print("vgg19 npy file loaded!")
 
     def build(self, input, is_rgb):
@@ -306,7 +308,6 @@ class VGG19:
 
             conv_biases = self.get_bias(name)
             bias = tf.nn.bias_add(conv, conv_biases)
-
             relu = tf.nn.relu(bias)
             return relu
 

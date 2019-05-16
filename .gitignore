@@ -9,12 +9,8 @@ checkpoints.zip
 __pycache__/**
 **.npy
 
-
  # ignore .DS_Store
 .DS_Store
-
- # ignore the checkpoints or weights
-**.npy
 
  # ignore files inside dir
 logs/**

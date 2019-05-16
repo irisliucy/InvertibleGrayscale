@@ -1,10 +1,12 @@
+import os
 import numpy as np
 import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # ignore tf warnings
 import datetime, time, scipy.io
 from tfrecords import *
 from model import *
 from util import *
-import os
+import config
 
 import cv2
 
@@ -19,8 +21,6 @@ beta1 = 0.9
 
 display_steps = 100
 save_epochs = 10
-src_suffix = 'target'
-dst_suffix = 'target'
 
 img_shape = (256, 256)
 SAMPLE_TEST_MODE = False
@@ -85,7 +85,7 @@ def train(train_list, val_list, debug_mode=True):
 
         target_224 = tf.image.resize_images(target_imgs, size=[224, 224], method=0, align_corners=False)
         predict_224 = tf.image.resize_images(latent_imgs, size=[224, 224], method=0, align_corners=False)
-        vgg19_api = VGG19("/home/chuiyiliu3/srv/InvertibleGrayscale/vgg19.npy")
+        vgg19_api = VGG19(os.path.join(CURRENT_DIR, "vgg19.npy"))
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
         # stretch the global contrast to follow color contrast
@@ -144,7 +144,7 @@ def train(train_list, val_list, debug_mode=True):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         sess.run(tf.global_variables_initializer())
-        need_resotre = False
+        need_resotre = True
         if need_resotre:
             check_pt = tf.train.get_checkpoint_state("checkpoints")
             if check_pt and check_pt.model_checkpoint_path:
@@ -154,16 +154,18 @@ def train(train_list, val_list, debug_mode=True):
         print(">>------------>>> [Training_Num] =%d" % num)
         print(">>------------>>> [Parameter_Num] =%d" % sess.run(num_parameters))
 
-        print("----- Adding noise to the weights of model ...")
-        for weight in num_parameters:
-            sess.run(add_random_noise(weight))
+        # print("----- Adding noise to the weights of model ...")
+        # for weight in [train_op1, loss_op1, grads_loss, vgg_loss, global_order_loss]:
+        #     sess.run(add_random_noise(weight))
 
         # -------------------------------- stage one --------------------------------
         for epoch in range(0, n_epochs1):
+            print('---- epoch {}'.format(epoch))
             start_time = time.time()
             epoch_loss, n_iters = 0, 0
             avg_grads, avg_vggs, avg_orders = 0, 0, 0
             for step in range(0, num, batch_size):
+                print('Hello')
                 _, loss, grads, vggs, orders = sess.run([train_op1, loss_op1, grads_loss, vgg_loss, global_order_loss])
                 epoch_loss += loss
                 avg_grads += grads
@@ -335,19 +337,18 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     import argparse
+    from config import *
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
-        val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
-        train(train_list, val_list, debug_mode=False)
+        train_list = gen_list(DIR_TO_TRAIN_SET)
+        val_list = gen_list(DIR_TO_TEST_SET)
+        train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
-        test_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
+        test_list = gen_list(DIR_TO_TEST_SET)
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:
