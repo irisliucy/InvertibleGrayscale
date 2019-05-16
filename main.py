@@ -15,7 +15,7 @@ in_channels = 3
 out_channels = 3
 n_epochs1 = 90
 n_epochs2 = 30
-batch_size = 8
+batch_size = 4
 learning_rate = 0.0002
 beta1 = 0.9
 
@@ -144,7 +144,7 @@ def train(train_list, val_list, debug_mode=True):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         sess.run(tf.global_variables_initializer())
-        need_resotre = True
+        need_resotre = False
         if need_resotre:
             check_pt = tf.train.get_checkpoint_state("checkpoints")
             if check_pt and check_pt.model_checkpoint_path:

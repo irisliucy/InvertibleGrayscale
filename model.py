@@ -7,8 +7,8 @@ import config
 
 CROP_SIZE = 224
 
-img_width = 512
-img_heigh = 512
+img_width = 256
+img_heigh = 256
 
 # --------------------------------- LALER FUNCTION ----------------------------------------- #
 def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME', name='conv'):
@@ -83,7 +83,9 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         # note : read one training data : pixel range : [0, 255]
         in_img = tf.image.decode_image(tf.read_file(data_queue[0]), channels=channels)
         gt_img = tf.image.decode_image(tf.read_file(data_queue[1]), channels=channels)
-
+        print('Reading data......')
+        print(in_img)
+        print(gt_img)
         def preprocessing(input):
             proc = tf.cast(input, tf.float32)
             proc.set_shape([img_width, img_heigh, channels])
@@ -107,8 +109,7 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         dstfilelist = tf.convert_to_tensor(lablist, dtype=tf.string)
 
         # Put images and label into a queue
-        data_queue = tf.train.slice_input_producer([srcfilelist, dstfilelist], capacity=64, shuffle=need_shuffle)
-
+        data_queue = tf.train.slice_input_producer([srcfilelist, dstfilelist], num_epochs=None, capacity=64, shuffle=need_shuffle)
         # Read one data from queue
         input, target = read_data(data_queue)
         '''
