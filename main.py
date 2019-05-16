@@ -53,10 +53,10 @@ def train(train_list, val_list, debug_mode=True):
 
     # --------------------------------- loss terms ---------------------------------
     with tf.name_scope('Loss'):
-        
+
         target_224 = tf.image.resize_images(target_imgs, size=[224, 224], method=0, align_corners=False)
         predict_224 = tf.image.resize_images(latent_imgs, size=[224, 224], method=0, align_corners=False)
-        vgg19_api = VGG19("../vgg19.npy")
+        vgg19_api = VGG19("/home/chuiyiliu3/srv/InvertibleGrayscale/vgg19.npy")
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
         # stretch the global contrast to follow color contrast
@@ -227,7 +227,7 @@ def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
     save_dir_test = os.path.join("./output/results")
     exists_or_mkdir(save_dir_test)
-	
+
 	# ------------- Running Options
     # if run encoder, 3 channel RGB image should be provided in the 'test_list'
 	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
@@ -293,8 +293,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_list = gen_list('../Dataset/VOC2012/')
-        val_list = gen_list('../Dataset/color_val/')
+        train_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
+        val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
         #test_list = gen_list('./InputColor/')
