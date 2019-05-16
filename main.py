@@ -11,9 +11,9 @@ import cv2
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
 out_channels = 3
-n_epochs1 = 1
-n_epochs2 = 1
-batch_size = 1
+n_epochs1 = 90
+n_epochs2 = 30
+batch_size = 8
 learning_rate = 0.0002
 beta1 = 0.9
 
@@ -278,7 +278,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = 20
+    num = NUMBER_OF_SAMPLES
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -342,9 +342,8 @@ if __name__ == "__main__":
         val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         train(train_list, val_list, debug_mode=False)
     elif args.mode == 'test':
-        test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
-        # test_list = gen_list('/Users/irisliu/Documents/cityu_research/InvertibelGrayscale/data/grey')
-        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_val')
+        # test_list = gen_list('/Users/irisliu/Downloads/VOCdevkit/VOC2012/color_train') # color images
+        test_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
         checkpoint_dir = "checkpoints"
         evaluate(test_list, checkpoint_dir)
     else:
