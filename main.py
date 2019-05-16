@@ -154,6 +154,10 @@ def train(train_list, val_list, debug_mode=True):
         print(">>------------>>> [Training_Num] =%d" % num)
         print(">>------------>>> [Parameter_Num] =%d" % sess.run(num_parameters))
 
+        print("----- Adding noise to the weights of model ...")
+        for weight in num_parameters:
+            sess.run(add_random_noise(weight))
+
         # -------------------------------- stage one --------------------------------
         for epoch in range(0, n_epochs1):
             start_time = time.time()
