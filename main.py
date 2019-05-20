@@ -19,7 +19,7 @@ src_suffix = 'target'
 dst_suffix = 'target'
 
 img_shape = (256, 256)
-SAMPLE_TEST_MODE = False
+SAMPLE_TEST_MODE = True
 sample_num = 20
 
 
@@ -41,20 +41,30 @@ def gen_list(data_dir):
                 img.save(path1)
                 file_pair_list.append(path1)
         else:
+            from PIL import Image
+            img = Image.open(path1)
+            img = img.resize(img_shape, Image.ANTIALIAS)
+            print('Saving img of size {} to {}'.format(img_shape, path1))
+            img.save(path1)
             file_pair_list.append(path1)
     return file_pair_list
 
 
 def train(train_list, val_list, debug_mode=True):
     print('Running ColorEncoder -Training!')
+    init_start_time = time.time()
     # create folders to save trained model and results
     graph_dir   = './graph'
     checkpt_dir = './checkpoints'
     ouput_dir   = './output'
+    result_loss_dir = os.path.join(ouput_dir, 'loss')
     result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
+    exists_or_mkdir(result_loss_dir, need_remove=False)
+    exists_or_mkdir(result_imgs_dir, need_remove=False)
+
 
     # --------------------------------- load data ---------------------------------
     # data fetched at range: [-1,1]
@@ -179,10 +189,10 @@ def train(train_list, val_list, debug_mode=True):
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "loss", "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "order_loss"), order_loss_list)
+                save_list(os.path.join(result_loss_dir, "total_loss"), total_loss_list)
+                save_list(os.path.join(result_loss_dir, "grads_loss"), grad_loss_list)
+                save_list(os.path.join(result_loss_dir, "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(result_loss_dir, "order_loss"), order_loss_list)
 
         # -------------------------------- stage two --------------------------------
         for epoch in range(0, n_epochs2):
@@ -225,16 +235,16 @@ def train(train_list, val_list, debug_mode=True):
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "loss", "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "order_loss"), order_loss_list)
-                save_list(os.path.join(ouput_dir, "loss", "quant_loss"), quanti_loss_list)
+                save_list(os.path.join(result_loss_dir, "total_loss"), total_loss_list)
+                save_list(os.path.join(result_loss_dir, "grads_loss"), grad_loss_list)
+                save_list(os.path.join(result_loss_dir, "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(result_loss_dir, "order_loss"), order_loss_list)
+                save_list(os.path.join(result_loss_dir, "quant_loss"), quanti_loss_list)
 
         # stop data queue
         coord.request_stop()
         coord.join(threads)
-        print ("Training finished!")
+        print("Training finished! consumes %f sec" % (time.time() - init_start_time))
 
     return None
 

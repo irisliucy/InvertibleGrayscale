@@ -97,6 +97,7 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         # Get full list of image and labels
         imglist = [s.split(' ')[0] for s in data_list]
         lablist = [s.split(' ')[-1] for s in data_list]
+        print("imglist {} vs \nlabelist{}".format(imglist[0], lablist[0]))
         srcfilelist = tf.convert_to_tensor(imglist, dtype=tf.string)
         dstfilelist = tf.convert_to_tensor(lablist, dtype=tf.string)
 
@@ -115,7 +116,12 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         '''
 
         # Construct a batch of training data
-        in_batch, gt_batch = tf.train.batch([input, target], batch_size, num_threads=1, capacity=64)
+        # in_batch, gt_batch = tf.train.batch([input, target], batch_size, num_threads=1, capacity=64)
+        in_batch, gt_batch = tf.train.shuffle_batch([input, target],
+                                            batch_size,
+                                            num_threads=1,
+                                            capacity=64,
+                                            min_after_dequeue=60)
     return in_batch, gt_batch, len(data_list)
 
 

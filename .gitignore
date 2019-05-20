@@ -1,0 +1,20 @@
+# ignore config.py
+config.py
+
+ # ignore zip file
+checkpoints.zip
+
+ # ignore the checkpoint
+checkpoints/**
+
+ # ignore the output images
+output/**
+
+ # ignore __pycache__
+__pycache__/**
+
+ # ignore .DS_Store
+.DS_Store
+
+ # ignore the checkpoints or weights
+**.npy
