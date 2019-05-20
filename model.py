@@ -308,6 +308,3 @@ class VGG19:
 
     def get_fc_weight(self, name):
         return tf.constant(self.data_dict[name][0], name="weights")
-
-
-

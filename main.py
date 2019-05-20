@@ -20,13 +20,15 @@ dst_suffix = 'target'
 
 
 def gen_list(data_dir):
-    file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
+    file_list = glob.glob(os.path.join(data_dir, '*.*'))
+    # file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
     file_list.sort()
     file_pair_list = []
     for path1 in file_list:
-        path2 = path1.replace(src_suffix, dst_suffix)
-        path12 = path1 + ' ' + path2
-        file_pair_list.append(path12)
+        # path2 = path1.replace(src_suffix, dst_suffix)
+        # path12 = path1 + ' ' + path2
+        # file_pair_list.append(path12)
+        file_pair_list.append(path1)
     return file_pair_list
 
 
