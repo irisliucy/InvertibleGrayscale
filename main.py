@@ -19,7 +19,7 @@ src_suffix = 'target'
 dst_suffix = 'target'
 
 img_shape = (256, 256)
-IS_SAMPLE_TEST = True
+SAMPLE_TEST_MODE = False
 sample_num = 20
 
 
@@ -32,7 +32,7 @@ def gen_list(data_dir):
         # path2 = path1.replace(src_suffix, dst_suffix)
         # path12 = path1 + ' ' + path2
         # file_pair_list.append(path12)
-        if IS_SAMPLE_TEST==True:
+        if SAMPLE_TEST_MODE==True:
             if i < sample_num:
                 from PIL import Image
                 img = Image.open(path1)
@@ -51,6 +51,7 @@ def train(train_list, val_list, debug_mode=True):
     graph_dir   = './graph'
     checkpt_dir = './checkpoints'
     ouput_dir   = './output'
+    result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
@@ -173,15 +174,15 @@ def train(train_list, val_list, debug_mode=True):
                 print("----- validating model ...")
                 for idx in range(0, num_val, batch_size):
                     latents = sess.run(latent_val)
-                    save_images_from_batch(latents, ouput_dir, idx)
+                    save_images_from_batch(latents, result_imgs_dir, idx)
 
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "order_loss"), order_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "total_loss"), total_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "grads_loss"), grad_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "order_loss"), order_loss_list)
 
         # -------------------------------- stage two --------------------------------
         for epoch in range(0, n_epochs2):
@@ -219,16 +220,16 @@ def train(train_list, val_list, debug_mode=True):
                 print("----- validating model ...")
                 for idx in range(0, num_val, batch_size):
                     latents = sess.run(latent_val)
-                    save_images_from_batch(latents, ouput_dir, idx)
+                    save_images_from_batch(latents, result_imgs_dir, idx)
 
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "order_loss"), order_loss_list)
-                save_list(os.path.join(ouput_dir, "quant_loss"), quanti_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "total_loss"), total_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "grads_loss"), grad_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "order_loss"), order_loss_list)
+                save_list(os.path.join(ouput_dir, "loss", "quant_loss"), quanti_loss_list)
 
         # stop data queue
         coord.request_stop()
@@ -301,7 +302,7 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
@@ -310,7 +311,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         train_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
         val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
-        train(train_list, val_list, debug_mode=True)
+        train(train_list, val_list, debug_mode=False)
     elif args.mode == 'test':
         #test_list = gen_list('./InputColor/')
         test_list = gen_list('./InvertibelGray/')

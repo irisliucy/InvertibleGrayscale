@@ -21,7 +21,7 @@ def save_list(save_path, data_list):
     with open(save_path, 'w') as f:
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
-	
+
 
 def save_images_from_batch(img_batch, save_dir, init_no):
     if img_batch.shape[-1] == 3:
@@ -29,16 +29,16 @@ def save_images_from_batch(img_batch, save_dir, init_no):
         for i in range(img_batch.shape[0]):
             # [-1,1] >>> [0,255]
             image = Image.fromarray((127.5*(img_batch[i, :, :, :]+1)+0.5).astype(np.uint8))
-            image.save(os.path.join(save_dir, 'result_%05d.png' % (init_no + i)), 'PNG')
+            image.save(os.path.join(save_dir, 'restored_rgb_%05d.png' % (init_no + i)), 'PNG')
     else:
         ## single-channel gray image
         for i in range(img_batch.shape[0]):
             # [-1,1] >>> [0,255]
             image = Image.fromarray((127.5*(img_batch[i, :, :, 0]+1)+0.5).astype(np.uint8))
-            image.save(os.path.join(save_dir, 'result_%05d.png' % (init_no + i)), 'PNG')
+            image.save(os.path.join(save_dir, 'inverted_gray_%05d.png' % (init_no + i)), 'PNG')
     return None
 
-		
+
 def compute_color_psnr(im_batch1, im_batch2):
     mean_psnr = 0
     im_batch1 = im_batch1.squeeze()
