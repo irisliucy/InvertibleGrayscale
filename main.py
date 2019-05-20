@@ -18,17 +18,30 @@ save_epochs = 10
 src_suffix = 'target'
 dst_suffix = 'target'
 
+img_shape = (256, 256)
+IS_SAMPLE_TEST = True
+sample_num = 20
+
 
 def gen_list(data_dir):
     file_list = glob.glob(os.path.join(data_dir, '*.*'))
     # file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
     file_list.sort()
     file_pair_list = []
-    for path1 in file_list:
+    for i, path1 in enumerate(file_list):
         # path2 = path1.replace(src_suffix, dst_suffix)
         # path12 = path1 + ' ' + path2
         # file_pair_list.append(path12)
-        file_pair_list.append(path1)
+        if IS_SAMPLE_TEST==True:
+            if i < sample_num:
+                from PIL import Image
+                img = Image.open(path1)
+                img = img.resize(img_shape, Image.ANTIALIAS)
+                print('Saving img of size {} to {}'.format(img_shape, path1))
+                img.save(path1)
+                file_pair_list.append(path1)
+        else:
+            file_pair_list.append(path1)
     return file_pair_list
 
 
@@ -65,15 +78,15 @@ def train(train_list, val_list, debug_mode=True):
         vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
-        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/256**2)
-        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/256**2)
+        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/img_shape[0]**2)
+        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/img_shape[0]**2)
         grads_loss = tf.abs(latent_grads-target_grads)
         # control the mapping order similar to normal rgb2gray
         global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
         # quantization loss
-        latent_stack = tf.concat([latent_imgs for t in range(256)], axis=3)
+        latent_stack = tf.concat([latent_imgs for t in range(img_shape[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
-        quant_stack = np.concatenate([id_mat * t for t in range(256)], axis=3)
+        quant_stack = np.concatenate([id_mat * t for t in range(img_shape[0])], axis=3)
         quant_stack = (quant_stack / 127.5) - 1
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
