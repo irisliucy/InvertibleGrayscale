@@ -11,6 +11,9 @@ import os
 DIR_TO_TRAIN_SET = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_TEST_SET = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
 CURRENT_DIR = '/home/chuiyiliu3/srv/InvertibleGrayscale'
+# DIR_TO_TRAIN_SET = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
+# DIR_TO_TEST_SET = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
+# CURRENT_DIR = '/home/chuiyiliu3/srv/InvertibleGrayscale'
 
 # GPU settings
 os.environ["CUDA_VISIBLE_DEVICES"] = "5"
