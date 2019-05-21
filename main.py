@@ -1,8 +1,10 @@
 import numpy as np
 import tensorflow as tf
 import datetime, time, scipy.io
+from tfrecords import *
 from model import *
 from util import *
+import os
 
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
@@ -19,19 +21,15 @@ src_suffix = 'target'
 dst_suffix = 'target'
 
 img_shape = (256, 256)
-SAMPLE_TEST_MODE = True
+SAMPLE_TEST_MODE = False
 sample_num = 20
 
 
 def gen_list(data_dir):
     file_list = glob.glob(os.path.join(data_dir, '*.*'))
-    # file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
     file_list.sort()
     file_pair_list = []
     for i, path1 in enumerate(file_list):
-        # path2 = path1.replace(src_suffix, dst_suffix)
-        # path12 = path1 + ' ' + path2
-        # file_pair_list.append(path12)
         if SAMPLE_TEST_MODE==True:
             if i < sample_num:
                 from PIL import Image
@@ -57,18 +55,21 @@ def train(train_list, val_list, debug_mode=True):
     graph_dir   = './graph'
     checkpt_dir = './checkpoints'
     ouput_dir   = './output'
+    record_dir = os.path.join(ouput_dir, 'tfrecords')
     result_loss_dir = os.path.join(ouput_dir, 'loss')
     result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
+    exists_or_mkdir(record_dir)
     exists_or_mkdir(result_loss_dir, need_remove=False)
     exists_or_mkdir(result_imgs_dir, need_remove=False)
 
 
     # --------------------------------- load data ---------------------------------
     # data fetched at range: [-1,1]
-    input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
+    # input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
+    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, img_shape[0], batch_size, need_shuffle=True)
 
     latent_imgs = encode(input_imgs, 1, is_train=True, reuse=False)
     pred_imgs = decode(latent_imgs, out_channels, is_train=True, reuse=False)

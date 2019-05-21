@@ -6,65 +6,58 @@ from util import *
 class SaveRecord(object):
     """ Save images to tfrecord files
     Args:
-        fileDir (string): path of images
+        fileDir (string): images' path
         recordDir (string): path of the TFRecord files
         imageSize (int): image size, assuming the x, y of an image is the same
     """
-    def __init__(self, recordDir, fileDir, imageSize):
+    def __init__(self, recordDir, fileDir, imageSize, batchSize):
         self._imageSize = imageSize
+        self._batchSize = batchSize
 
         trainRecord = os.path.join(recordDir,'train.tfrecord')
         validRecord = os.path.join(recordDir,'valid.tfrecord')
 
-#        obtain the file list
-        filenames = os.listdir(fileDir)
-        np.random.shuffle(filenames)
-        fileNum = len(filenames)
+        fileNum = len(fileDir)
         print('the count of images is ' + str(fileNum))
 
-#        obtain the split for train to test, 4:1
-        # splitNum = int(fileNum * 0.8)
-        # trainImages = filenames[ : splitNum]
-        # validImages = filenames[splitNum : ]
+        trainImages = [s.split(' ')[0] for s in fileDir]
 
 #       save data to destinated path
         self.save_data_to_record( fileDir = fileDir, datas = trainImages, recordname = trainRecord)
-        self.save_data_to_record(fileDir = fileDir,datas = validImages, recordname = validRecord)
+        print('A total of {} image(s) have been writted to TFRecord files!'.format(str(fileNum)))
 
     def save_data_to_record(self, fileDir, datas, recordname):
         writer = tf.python_io.TFRecordWriter(recordname) # open the TFRecords file
 
         for var in datas:
-            filename = os.path.join(fileDir, var)
-            label = int(os.path.basename(var).split('_')[0])
+            filename = var.split(' ')[0]
+            label = var.split(' ')[-1]
+            print("imglist ==> {} \nlabelist ==> {}".format(filename, label))
             image = Image.open(filename)                # open the image
             image = image.resize((self._imageSize,self._imageSize))
             imageArray = image.tobytes()               # convert to bytes
 
+            label = Image.open(label)
+            label = label.resize((self._imageSize,self._imageSize))
+            labelArray = label.tobytes()
+
             # Create an example protocol buffer
             example = tf.train.Example(features = tf.train.Features(feature = {
                       'image': tf.train.Feature(bytes_list = tf.train.BytesList(value = [imageArray]))
-                      ,'label': tf.train.Feature(int64_list = tf.train.Int64List(value = [label]))}))
+                      ,'label': tf.train.Feature(bytes_list = tf.train.BytesList(value = [labelArray]))}))
             writer.write(example.SerializeToString()) # Serialize to string and write on the file
-            print('Image has been writted to TFRecord file!')
         writer.close()
 
-    # for serialized_example in tf.python_io.tf_record_iterator("train.tfrecords"):
-    #     example = tf.train.Example()
-    #     example.ParseFromString(serialized_example)
-    #
-    #     image = example.features.feature['image'].bytes_list.value
-    #     # label = example.features.feature['label'].int64_list.value
-    #     # TODO: Add some preprocessing steps
-    #     print image, label
-
-    def read_and_decode(filename):
+    @staticmethod
+    def read_and_decode(self, filename, channels):
         """ Read the TFRecords file
         Args:
             filename (string): TFRecord filepath
         """
+        print('\nReading and decoding....')
     #    create a queue to hold the filenames
-        filename_queue = tf.train.string_input_producer([filename])
+        tfrecord_filename = os.path.join(filename,'train.tfrecord')
+        filename_queue = tf.train.string_input_producer([tfrecord_filename])
 
         reader = tf.TFRecordReader() # define a reader
         _, serialized = reader.read(filename_queue)   # return filename and file
@@ -75,14 +68,26 @@ class SaveRecord(object):
             'label' : tf.FixedLenFeature([], tf.string)})
 
         image = tf.decode_raw(features['image'], tf.uint8) # convert the data from string to numbers
-        image= tf.reshape(image, [IMAGE_SIZE, IMAGE_SIZE, 3]) # reshape data to original shape
-    #    img = tf.cast(img, tf.float32) * (1. / 255) - 0.5
-    #    image = tf.cast(features['image'], tf.string)
-        label = tf.cast(features['label'], tf.int32)
+        label = tf.decode_raw(features['label'], tf.uint8)
+
+    #    preprocessing
+        def preprocessing(input):
+            proc = tf.cast(input, tf.float32)
+            proc = tf.reshape(proc, [self._imageSize, self._imageSize, channels])
+            # normalization
+            proc = proc / 127.5 - 1
+            return proc
+
+        # output pixel's range : [-1, 1]
+        image = preprocessing(image)
+        label = preprocessing(label)
 
     #    batching
         img_batch, label_batch = tf.train.shuffle_batch([image, label],
-                                                    batch_size=BATCH_SIZE, capacity=2000,
-                                                    min_after_dequeue=1000)
+                                                    batch_size=self._batchSize,
+                                                    num_threads=1,
+                                                    capacity=64,
+                                                    min_after_dequeue=60)
 
+        print('\n tfrecord is read and decoded...')
         return img_batch, label_batch

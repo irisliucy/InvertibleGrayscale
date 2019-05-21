@@ -36,7 +36,7 @@ def save_images_from_batch(img_batch, save_dir, init_no):
             image = Image.fromarray((127.5*(img_batch[i, :, :, 0]+1)+0.5).astype(np.uint8))
             image.save(os.path.join(save_dir, 'inverted_gray_%05d.png' % (init_no + i)), 'PNG')
     return None
-        
+
 
 def compute_color_psnr(im_batch1, im_batch2):
     mean_psnr = 0

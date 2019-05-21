@@ -18,3 +18,9 @@ __pycache__/**
 
  # ignore the checkpoints or weights
 **.npy
+
+ # ignore log dir
+logs/**
+
+ # ignore .DS_Store
+ **.DS_Store
