@@ -1,8 +1,10 @@
 import numpy as np
 import tensorflow as tf
 import datetime, time, scipy.io
+from tfrecords import *
 from model import *
 from util import *
+import os
 
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
@@ -18,31 +20,56 @@ save_epochs = 10
 src_suffix = 'target'
 dst_suffix = 'target'
 
+img_shape = (256, 256)
+SAMPLE_TEST_MODE = False
+sample_num = 20
+
 
 def gen_list(data_dir):
-    file_list = glob.glob(os.path.join(data_dir, src_suffix, '*.*'))
+    file_list = glob.glob(os.path.join(data_dir, '*.*'))
     file_list.sort()
     file_pair_list = []
-    for path1 in file_list:
-        path2 = path1.replace(src_suffix, dst_suffix)
-        path12 = path1 + ' ' + path2
-        file_pair_list.append(path12)
+    for i, path1 in enumerate(file_list):
+        if SAMPLE_TEST_MODE==True:
+            if i < sample_num:
+                from PIL import Image
+                img = Image.open(path1)
+                img = img.resize(img_shape, Image.ANTIALIAS)
+                print('Saving img of size {} to {}'.format(img_shape, path1))
+                img.save(path1)
+                file_pair_list.append(path1)
+        else:
+            from PIL import Image
+            img = Image.open(path1)
+            img = img.resize(img_shape, Image.ANTIALIAS)
+            print('Saving img of size {} to {}'.format(img_shape, path1))
+            img.save(path1)
+            file_pair_list.append(path1)
     return file_pair_list
 
 
 def train(train_list, val_list, debug_mode=True):
     print('Running ColorEncoder -Training!')
+    init_start_time = time.time()
     # create folders to save trained model and results
     graph_dir   = './graph'
     checkpt_dir = './checkpoints'
     ouput_dir   = './output'
+    record_dir = os.path.join(ouput_dir, 'tfrecords')
+    result_loss_dir = os.path.join(ouput_dir, 'loss')
+    result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
+    exists_or_mkdir(record_dir)
+    exists_or_mkdir(result_loss_dir, need_remove=False)
+    exists_or_mkdir(result_imgs_dir, need_remove=False)
+
 
     # --------------------------------- load data ---------------------------------
     # data fetched at range: [-1,1]
-    input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
+    # input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
+    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, img_shape[0], batch_size, need_shuffle=True)
 
     latent_imgs = encode(input_imgs, 1, is_train=True, reuse=False)
     pred_imgs = decode(latent_imgs, out_channels, is_train=True, reuse=False)
@@ -53,25 +80,25 @@ def train(train_list, val_list, debug_mode=True):
 
     # --------------------------------- loss terms ---------------------------------
     with tf.name_scope('Loss'):
-        
+
         target_224 = tf.image.resize_images(target_imgs, size=[224, 224], method=0, align_corners=False)
         predict_224 = tf.image.resize_images(latent_imgs, size=[224, 224], method=0, align_corners=False)
-        vgg19_api = VGG19("../vgg19.npy")
+        vgg19_api = VGG19("/home/chuiyiliu3/srv/InvertibleGrayscale/vgg19.npy")
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
         # stretch the global contrast to follow color contrast
         vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
-        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/256**2)
-        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/256**2)
+        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/img_shape[0]**2)
+        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/img_shape[0]**2)
         grads_loss = tf.abs(latent_grads-target_grads)
         # control the mapping order similar to normal rgb2gray
         global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
         # quantization loss
-        latent_stack = tf.concat([latent_imgs for t in range(256)], axis=3)
+        latent_stack = tf.concat([latent_imgs for t in range(img_shape[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
-        quant_stack = np.concatenate([id_mat * t for t in range(256)], axis=3)
+        quant_stack = np.concatenate([id_mat * t for t in range(img_shape[0])], axis=3)
         quant_stack = (quant_stack / 127.5) - 1
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
@@ -158,15 +185,15 @@ def train(train_list, val_list, debug_mode=True):
                 print("----- validating model ...")
                 for idx in range(0, num_val, batch_size):
                     latents = sess.run(latent_val)
-                    save_images_from_batch(latents, ouput_dir, idx)
+                    save_images_from_batch(latents, result_imgs_dir, idx)
 
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "order_loss"), order_loss_list)
+                save_list(os.path.join(result_loss_dir, "total_loss"), total_loss_list)
+                save_list(os.path.join(result_loss_dir, "grads_loss"), grad_loss_list)
+                save_list(os.path.join(result_loss_dir, "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(result_loss_dir, "order_loss"), order_loss_list)
 
         # -------------------------------- stage two --------------------------------
         for epoch in range(0, n_epochs2):
@@ -204,21 +231,21 @@ def train(train_list, val_list, debug_mode=True):
                 print("----- validating model ...")
                 for idx in range(0, num_val, batch_size):
                     latents = sess.run(latent_val)
-                    save_images_from_batch(latents, ouput_dir, idx)
+                    save_images_from_batch(latents, result_imgs_dir, idx)
 
             if (epoch+1) % save_epochs == 0:
                 print("----- saving model  ...")
                 saver.save(sess, os.path.join(checkpt_dir, "model.cpkt"), global_step=global_step)
-                save_list(os.path.join(ouput_dir, "total_loss"), total_loss_list)
-                save_list(os.path.join(ouput_dir, "grads_loss"), grad_loss_list)
-                save_list(os.path.join(ouput_dir, "vggs_loss"), vgg_loss_list)
-                save_list(os.path.join(ouput_dir, "order_loss"), order_loss_list)
-                save_list(os.path.join(ouput_dir, "quant_loss"), quanti_loss_list)
+                save_list(os.path.join(result_loss_dir, "total_loss"), total_loss_list)
+                save_list(os.path.join(result_loss_dir, "grads_loss"), grad_loss_list)
+                save_list(os.path.join(result_loss_dir, "vggs_loss"), vgg_loss_list)
+                save_list(os.path.join(result_loss_dir, "order_loss"), order_loss_list)
+                save_list(os.path.join(result_loss_dir, "quant_loss"), quanti_loss_list)
 
         # stop data queue
         coord.request_stop()
         coord.join(threads)
-        print ("Training finished!")
+        print("Training finished! consumes %f sec" % (time.time() - init_start_time))
 
     return None
 
@@ -227,7 +254,7 @@ def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
     save_dir_test = os.path.join("./output/results")
     exists_or_mkdir(save_dir_test)
-	
+
 	# ------------- Running Options
     # if run encoder, 3 channel RGB image should be provided in the 'test_list'
 	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
@@ -286,16 +313,16 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_list = gen_list('../Dataset/VOC2012/')
-        val_list = gen_list('../Dataset/color_val/')
-        train(train_list, val_list, debug_mode=True)
+        train_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
+        val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
+        train(train_list, val_list, debug_mode=False)
     elif args.mode == 'test':
         #test_list = gen_list('./InputColor/')
         test_list = gen_list('./InvertibelGray/')

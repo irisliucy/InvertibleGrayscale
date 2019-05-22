@@ -1,6 +1,7 @@
 import tensorflow as tf
 from util import *
 import random
+from tfrecords import *
 
 CROP_SIZE = 224
 
@@ -89,6 +90,8 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
             return proc
 
         # output pixel's range : [-1, 1]
+        print('\n******', in_img.shape, in_img.dtype)
+        print('\n******', gt_img.shape, gt_img.dtype)
         in_imgproc = preprocessing(in_img)
         gt_imgproc = preprocessing(gt_img)
         return in_imgproc, gt_imgproc
@@ -97,6 +100,7 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         # Get full list of image and labels
         imglist = [s.split(' ')[0] for s in data_list]
         lablist = [s.split(' ')[-1] for s in data_list]
+        print("imglist ==> {} \nlabelist ==> {}".format(imglist[0], lablist[0]))
         srcfilelist = tf.convert_to_tensor(imglist, dtype=tf.string)
         dstfilelist = tf.convert_to_tensor(lablist, dtype=tf.string)
 
@@ -115,7 +119,30 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         '''
 
         # Construct a batch of training data
-        in_batch, gt_batch = tf.train.batch([input, target], batch_size, num_threads=1, capacity=64)
+        # in_batch, gt_batch = tf.train.batch([input, target], batch_size, num_threads=1, capacity=64)
+        in_batch, gt_batch = tf.train.shuffle_batch([input, target],
+                                            batch_size,
+                                            num_threads=1,
+                                            capacity=64,
+                                            min_after_dequeue=60)
+    return in_batch, gt_batch, len(data_list)
+
+
+def tfrecord_input_producer(data_list, record_dir, channels, imageSize, batch_size, need_shuffle):
+    if len(data_list) == 0:
+        raise Exception("empty data list!")
+    tfrecord = SaveRecord(record_dir, data_list, imageSize, batch_size)
+    in_batch, gt_batch = tfrecord.read_and_decode(tfrecord, record_dir, channels)
+
+    """ Test reading and decoding tfrecords
+    print('<<<< Test if tfrecords are read correctly >>>> ')
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        threads = tf.train.start_queue_runners(sess = sess)
+        for i in range(5):
+            val, label = sess.run([in_batch, gt_batch])
+            print(val.shape, label)
+    """
     return in_batch, gt_batch, len(data_list)
 
 
@@ -308,6 +335,3 @@ class VGG19:
 
     def get_fc_weight(self, name):
         return tf.constant(self.data_dict[name][0], name="weights")
-
-
-
