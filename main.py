@@ -77,7 +77,8 @@ def train(train_list, val_list, debug_mode=True):
     latent_imgs = encode(input_imgs, 1, is_train=True, reuse=False)
     pred_imgs = decode(latent_imgs, out_channels, is_train=True, reuse=False)
     if debug_mode:
-        input_val, target_val, num_val = input_producer(val_list, in_channels, batch_size, need_shuffle=False)
+        # input_val, target_val, num_val = input_producer(val_list, in_channels, batch_size, need_shuffle=False)
+        input_val, target_val, num_val = tfrecord_input_producer(train_list, record_dir, in_channels, IMG_SHAPE[0], batch_size, need_shuffle=False)
         latent_val = encode(input_val, 1, is_train=False, reuse=True)
         pred_val = decode(latent_val, out_channels, is_train=False, reuse=True)
 
@@ -270,11 +271,13 @@ def evaluate(test_list, checkpoint_dir):
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
     if RUN_Encoder:
-	    input_imgs, target_imgs, num = input_producer(test_list, 3, batch_size, need_shuffle=False)
-	    latent_imgs = encode(input_imgs, 1, is_train=False, reuse=False)
+	    # input_imgs, target_imgs, num = input_producer(test_list, 3, batch_size, need_shuffle=False)
+        input_imgs, target_imgs, num = tfrecord_input_producer(test_list, record_dir, 3, IMG_SHAPE[0], batch_size, need_shuffle=False)
+        latent_imgs = encode(input_imgs, 1, is_train=False, reuse=False)
     else:
-	    input_imgs, target_imgs, num = input_producer(test_list, 1, batch_size, need_shuffle=False)
-	    restored_imgs = decode(input_imgs, out_channels, is_train=False, reuse=False)
+	    # input_imgs, target_imgs, num = input_producer(test_list, 1, batch_size, need_shuffle=False)
+        input_imgs, target_imgs, num = tfrecord_input_producer(test_list, record_dir, 1, IMG_SHAPE[0], batch_size, need_shuffle=False)
+        restored_imgs = decode(input_imgs, out_channels, is_train=False, reuse=False)
 
     # --------------------------------- evaluation ---------------------------------
     # set GPU resources

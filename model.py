@@ -5,6 +5,8 @@ from tfrecords import *
 
 from config import *
 
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
+
 CROP_SIZE = 224
 
 img_width = IMG_SHAPE[0]

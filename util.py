@@ -41,6 +41,13 @@ def save_images_from_batch(img_batch, save_dir, init_no):
 
 
 def compute_color_psnr(im_batch1, im_batch2):
+    """ Compute color psnr in 3 channels
+    Args:
+        im_batch1 (numpy array): numpy array of source image
+        im_batch2 (numpy array): numpy array of target image
+    Return:
+        psnr (float)
+    """
     mean_psnr = 0
     im_batch1 = im_batch1.squeeze()
     im_batch2 = im_batch2.squeeze()
@@ -49,7 +56,7 @@ def compute_color_psnr(im_batch1, im_batch2):
         # Convert pixel value to [0,255]
         im1 = 127.5 * (im_batch1[i]+1)
         im2 = 127.5 * (im_batch2[i]+1)
-        #print(im1.shape)
+        print(im1.shape)
         psnr1 = calc_psnr(im1[:,:,0], im2[:,:,0])
         psnr2 = calc_psnr(im1[:,:,1], im2[:,:,1])
         psnr3 = calc_psnr(im1[:,:,2], im2[:,:,2])
@@ -58,6 +65,13 @@ def compute_color_psnr(im_batch1, im_batch2):
 
 
 def measure_psnr(im_batch1, im_batch2):
+    """ measure psnr
+    Args:
+        im_batch1 (numpy array): numpy array of source image
+        im_batch2 (numpy array): numpy array of target image
+    Return:
+        psnr (float)
+    """
     mean_psnr = 0
     num = im_batch1.shape[0]
     for i in range(num):

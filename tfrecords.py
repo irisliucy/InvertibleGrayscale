@@ -2,6 +2,7 @@ import os
 from PIL import Image
 import tensorflow as tf
 from util import *
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
 
 class SaveRecord(object):
     """ Save images to tfrecord files
