@@ -1,14 +1,16 @@
 import os
 import numpy as np
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # ignore tf warnings
 import datetime, time, scipy.io
+import cv2
+
 from tfrecords import *
 from model import *
 from util import *
-import config
+from config import *
 
-import cv2
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
+
 
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
@@ -22,30 +24,25 @@ beta1 = 0.9
 display_steps = 100
 save_epochs = 10
 
-img_shape = (256, 256)
-SAMPLE_TEST_MODE = False
-sample_num = 20
-
-
 def gen_list(data_dir):
     file_list = glob.glob(os.path.join(data_dir, '*.*'))
     file_list.sort()
     file_pair_list = []
     for i, path1 in enumerate(file_list):
         if SAMPLE_TEST_MODE==True:
-            if i < sample_num:
+            if i < NUMBER_OF_SAMPLES:
                 from PIL import Image
                 img = Image.open(path1)
-                img = img.resize(img_shape, Image.ANTIALIAS)
-                print('Saving img of size {} to {}'.format(img_shape, path1))
+                img = img.resize(IMG_SHAPE, Image.ANTIALIAS)
+                print('Saving img of size {} to {}'.format(IMG_SHAPE, path1))
                 img.save(path1)
                 file_pair_list.append(path1)
         else:
-            from PIL import Image
-            img = Image.open(path1)
-            img = img.resize(img_shape, Image.ANTIALIAS)
-            print('Saving img of size {} to {}'.format(img_shape, path1))
-            img.save(path1)
+            # from PIL import Image
+            # img = Image.open(path1)
+            # img = img.resize(IMG_SHAPE, Image.ANTIALIAS)
+            # print('Saving img of size {} to {}'.format(IMG_SHAPE, path1))
+            # img.save(path1)
             file_pair_list.append(path1)
     return file_pair_list
 
@@ -54,12 +51,12 @@ def train(train_list, val_list, debug_mode=True):
     print('Running ColorEncoder -Training!')
     init_start_time = time.time()
     # create folders to save trained model and results
-    graph_dir   = './graph'
-    checkpt_dir = './checkpoints'
-    ouput_dir   = './output'
+    graph_dir   = os.path.join(RESULT_STORAGE_DIR, 'graph')
+    checkpt_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
+    ouput_dir   = os.path.join(RESULT_STORAGE_DIR, 'output')
     record_dir = os.path.join(ouput_dir, 'tfrecords')
     result_loss_dir = os.path.join(ouput_dir, 'loss')
-    result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
+    result_imgs_dir = os.path.join(ouput_dir, 'train_result_imgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
@@ -69,9 +66,13 @@ def train(train_list, val_list, debug_mode=True):
 
 
     # --------------------------------- load data ---------------------------------
+    train_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(train_list)
+    valid_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(val_list)
+    print("Train images:{} \nTest images:{} \nTotal images:{}".format(train_num, valid_num, (train_num + valid_num)))
+
     # data fetched at range: [-1,1]
     # input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
-    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, img_shape[0], batch_size, need_shuffle=True)
+    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, IMG_SHAPE[0], batch_size, need_shuffle=True)
 
     latent_imgs = encode(input_imgs, 1, is_train=True, reuse=False)
     pred_imgs = decode(latent_imgs, out_channels, is_train=True, reuse=False)
@@ -92,15 +93,15 @@ def train(train_list, val_list, debug_mode=True):
         vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
-        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/img_shape[0]**2)
-        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/img_shape[0]**2)
+        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/IMG_SHAPE[0]**2)
+        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/IMG_SHAPE[0]**2)
         grads_loss = tf.abs(latent_grads-target_grads)
         # control the mapping order similar to normal rgb2gray
         global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
         # quantization loss
-        latent_stack = tf.concat([latent_imgs for t in range(img_shape[0])], axis=3)
+        latent_stack = tf.concat([latent_imgs for t in range(IMG_SHAPE[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
-        quant_stack = np.concatenate([id_mat * t for t in range(img_shape[0])], axis=3)
+        quant_stack = np.concatenate([id_mat * t for t in range(IMG_SHAPE[0])], axis=3)
         quant_stack = (quant_stack / 127.5) - 1
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
@@ -165,7 +166,6 @@ def train(train_list, val_list, debug_mode=True):
             epoch_loss, n_iters = 0, 0
             avg_grads, avg_vggs, avg_orders = 0, 0, 0
             for step in range(0, num, batch_size):
-                print('Hello')
                 _, loss, grads, vggs, orders = sess.run([train_op1, loss_op1, grads_loss, vgg_loss, global_order_loss])
                 epoch_loss += loss
                 avg_grads += grads
@@ -260,15 +260,12 @@ def train(train_list, val_list, debug_mode=True):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    save_dir_test_gray = os.path.join("./output/results/invertible_gray")
-    save_dir_test_color = os.path.join("./output/results/restored_rgb")
+    test_output_dir = os.path.join(RESULT_STORAGE_DIR, 'output')
+    save_dir_test_gray = os.path.join(test_output_dir, "test_result_imgs", "invertible_gray")
+    save_dir_test_color = os.path.join(test_output_dir, "test_result_imgs", "restored_rgb")
+    exists_or_mkdir(test_output_dir)
     exists_or_mkdir(save_dir_test_color)
     exists_or_mkdir(save_dir_test_gray)
-
-	# ------------- Running Options
-    # if run encoder, 3 channel RGB image should be provided in the 'test_list'
-	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
-    RUN_Encoder = False
 
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
@@ -284,7 +281,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = NUMBER_OF_SAMPLES
+    num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(test_list)
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -300,7 +297,11 @@ def evaluate(test_list, checkpoint_dir):
             return None
 
         start_time = time.time()
-        print("Total images:%d" % num)
+        print("Total images: %d" % num)
+        print("Image Shape: {}".format(IMG_SHAPE))
+        print("Encoder is running... RGB --> Grayscale") if RUN_Encoder == True else print("Decoder is running... Grayscale --> RGB")
+        print("Loading images from {}".format(DIR_TO_TEST_SET))
+
         cnt = 0
         while not coord.should_stop():
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -345,14 +346,17 @@ if __name__ == "__main__":
 
     if args.mode == 'train':
         train_list = gen_list(DIR_TO_TRAIN_SET)
-        val_list = gen_list(DIR_TO_TEST_SET)
+        val_list = gen_list(DIR_TO_VALID_SET)
         train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        # test_list = gen_list(DIR_TO_TEST_SET)
-        exists_or_mkdir(DIR_TO_TEST_SET + '/test')
-        generate_rgb_gradient_image(img_shape, DIR_TO_TEST_SET + '/test')
-        test_list = gen_list(DIR_TO_TEST_SET+ '/test')
-        checkpoint_dir = "checkpoints"
+        checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
+        test_list = gen_list(DIR_TO_TEST_SET)
+
+        # Test rgb gradient
+        # exists_or_mkdir(DIR_TO_TEST_SET + '/test')
+        # generate_rgb_gradient_image(IMG_SHAPE, DIR_TO_TEST_SET + '/test')
+        # test_list = gen_list(DIR_TO_TEST_SET+ '/test')
+
         evaluate(test_list, checkpoint_dir)
     else:
         raise Exception("Unknow --mode")

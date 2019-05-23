@@ -7,10 +7,27 @@
 '''
 import os
 
+MODEL_VERSION = 'vgg19v0'
+
 # Directories & Paths
-DIR_TO_TRAIN_SET = ''
-DIR_TO_TEST_SET = ''
-CURRENT_DIR = ''
+DIR_TO_TRAIN_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
+DIR_TO_VALID_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
+DIR_TO_TEST_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
+CURRENT_DIR = '' # '/home/chuiyiliu3/srv/InvertibleGrayscale'
+RESULT_STORAGE_DIR = os.path.join('./resultStorage/', MODEL_VERSION)
 
 # GPU settings
 os.environ["CUDA_VISIBLE_DEVICES"] = "5"
+
+# Parameters
+IMG_SHAPE = (256, 256)
+
+# Sample Mode for code testing
+SAMPLE_TEST_MODE = False
+NUMBER_OF_SAMPLES = 20
+
+# Evaluation
+# ------------- Running Options
+# if run encoder (True), 3 channel RGB image should be provided in the 'DIR_TO_TEST_SET'
+# if run decoder (False), 1 channel invertible grayscale image should be provided in the 'DIR_TO_TEST_SET'
+RUN_Encoder = True

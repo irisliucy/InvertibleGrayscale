@@ -3,12 +3,12 @@ from util import *
 import random
 from tfrecords import *
 
-import config
+from config import *
 
 CROP_SIZE = 224
 
-img_width = 256
-img_heigh = 256
+img_width = IMG_SHAPE[0]
+img_heigh = IMG_SHAPE[1]
 
 # --------------------------------- LALER FUNCTION ----------------------------------------- #
 def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME', name='conv'):
@@ -83,9 +83,6 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         # note : read one training data : pixel range : [0, 255]
         in_img = tf.image.decode_image(tf.read_file(data_queue[0]), channels=channels)
         gt_img = tf.image.decode_image(tf.read_file(data_queue[1]), channels=channels)
-        print('Reading data......')
-        print(in_img)
-        print(gt_img)
         def preprocessing(input):
             proc = tf.cast(input, tf.float32)
             proc.set_shape([img_width, img_heigh, channels])
@@ -94,8 +91,6 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
             return proc
 
         # output pixel's range : [-1, 1]
-        print('\n******', in_img.shape, in_img.dtype)
-        print('\n******', gt_img.shape, gt_img.dtype)
         in_imgproc = preprocessing(in_img)
         gt_imgproc = preprocessing(gt_img)
         return in_imgproc, gt_imgproc

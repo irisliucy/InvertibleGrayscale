@@ -1,5 +1,5 @@
 # ignore config.py
-config.py
+*config.py
 
  # ignore the checkpoint
 checkpoints/**
@@ -14,4 +14,4 @@ __pycache__/**
 
  # ignore files inside dir
 logs/**
-output/**
+resultStorage/**
