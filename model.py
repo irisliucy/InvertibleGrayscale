@@ -3,10 +3,14 @@ from util import *
 import random
 from tfrecords import *
 
+from config import *
+
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
+
 CROP_SIZE = 224
 
-img_width = 256
-img_heigh = 256
+img_width = IMG_SHAPE[0]
+img_heigh = IMG_SHAPE[1]
 
 # --------------------------------- LALER FUNCTION ----------------------------------------- #
 def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME', name='conv'):
@@ -81,7 +85,6 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         # note : read one training data : pixel range : [0, 255]
         in_img = tf.image.decode_image(tf.read_file(data_queue[0]), channels=channels)
         gt_img = tf.image.decode_image(tf.read_file(data_queue[1]), channels=channels)
-
         def preprocessing(input):
             proc = tf.cast(input, tf.float32)
             proc.set_shape([img_width, img_heigh, channels])
@@ -90,8 +93,6 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
             return proc
 
         # output pixel's range : [-1, 1]
-        print('\n******', in_img.shape, in_img.dtype)
-        print('\n******', gt_img.shape, gt_img.dtype)
         in_imgproc = preprocessing(in_img)
         gt_imgproc = preprocessing(gt_img)
         return in_imgproc, gt_imgproc
@@ -105,8 +106,7 @@ def input_producer(data_list, channels, batch_size, need_shuffle):
         dstfilelist = tf.convert_to_tensor(lablist, dtype=tf.string)
 
         # Put images and label into a queue
-        data_queue = tf.train.slice_input_producer([srcfilelist, dstfilelist], capacity=64, shuffle=need_shuffle)
-
+        data_queue = tf.train.slice_input_producer([srcfilelist, dstfilelist], num_epochs=None, capacity=64, shuffle=need_shuffle)
         # Read one data from queue
         input, target = read_data(data_queue)
         '''
@@ -230,7 +230,7 @@ class VGG19:
         if vgg19_npy_path is None:
             print("Please download vgg19.npz from : https://github.com/machrisaa/tensorflow-vgg")
             exit()
-        self.data_dict = np.load(vgg19_npy_path, encoding='latin1').item()
+        self.data_dict = np.load(vgg19_npy_path, allow_pickle=True, encoding='latin1').item()
         print("vgg19 npy file loaded!")
 
     def build(self, input, is_rgb):
@@ -306,7 +306,6 @@ class VGG19:
 
             conv_biases = self.get_bias(name)
             bias = tf.nn.bias_add(conv, conv_biases)
-
             relu = tf.nn.relu(bias)
             return relu
 

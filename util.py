@@ -5,6 +5,8 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
+import config
+
 
 def exists_or_mkdir(path, need_remove=False):
     if not os.path.exists(path):
@@ -39,6 +41,13 @@ def save_images_from_batch(img_batch, save_dir, init_no):
 
 
 def compute_color_psnr(im_batch1, im_batch2):
+    """ Compute color psnr in 3 channels
+    Args:
+        im_batch1 (numpy array): numpy array of source image
+        im_batch2 (numpy array): numpy array of target image
+    Return:
+        psnr (float)
+    """
     mean_psnr = 0
     im_batch1 = im_batch1.squeeze()
     im_batch2 = im_batch2.squeeze()
@@ -47,7 +56,7 @@ def compute_color_psnr(im_batch1, im_batch2):
         # Convert pixel value to [0,255]
         im1 = 127.5 * (im_batch1[i]+1)
         im2 = 127.5 * (im_batch2[i]+1)
-        #print(im1.shape)
+        # print(im1.shape)
         psnr1 = calc_psnr(im1[:,:,0], im2[:,:,0])
         psnr2 = calc_psnr(im1[:,:,1], im2[:,:,1])
         psnr3 = calc_psnr(im1[:,:,2], im2[:,:,2])
@@ -56,6 +65,13 @@ def compute_color_psnr(im_batch1, im_batch2):
 
 
 def measure_psnr(im_batch1, im_batch2):
+    """ measure psnr
+    Args:
+        im_batch1 (numpy array): numpy array of source image
+        im_batch2 (numpy array): numpy array of target image
+    Return:
+        psnr (float)
+    """
     mean_psnr = 0
     num = im_batch1.shape[0]
     for i in range(num):
@@ -75,11 +91,48 @@ def calc_psnr(im1, im2):
         g_im1 = im1.astype(np.float32)
         g_im2 = im2.astype(np.float32)
     else:
-        g_im1 = np.array(Image.fromarray(im1).convert('L'), np.float32)
-        g_im2 = np.array(Image.fromarray(im2).convert('L'), np.float32)
+        g_im1 = np.array(Image.fromarray(im1.astype('uint8')).convert('L'), np.float32)
+        g_im2 = np.array(Image.fromarray(im2.astype('uint8')).convert('L'), np.float32)
 
     mse = np.mean((g_im1 - g_im2) ** 2)
     if mse == 0:
         return 100
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+
+
+def add_random_noise(w, mean=0.0, stddev=1.0):
+    ''' Add noise to weights of model
+    Args:
+        w (tf.Varaible): weights
+        mean (float): mean
+        stddev (float): standard deviation
+    Returns:
+        updated values of the weights
+    '''
+    variables_shape = tf.shape(w)
+    noise = tf.random_normal(
+        variables_shape,
+        mean=mean,
+        stddev=stddev,
+        dtype=tf.float32,
+    )
+    return tf.assign_add(w, noise)
+
+def generate_rgb_gradient_image(img_shape, img_dir):
+    import math
+    from PIL import Image
+    im = Image.new('RGB', img_shape)
+    ld = im.load()
+
+    def gaussian(x, a, b, c, d=0):
+        return a * math.exp(-(x - b)**2 / (2 * c**2)) + d
+
+    for x in range(im.size[0]):
+        r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
+        g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
+        b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
+        for y in range(im.size[1]):
+            ld[x, y] = (r, g, b)
+
+    im.save(os.path.join(img_dir, 'color_gradient'), 'PNG')
