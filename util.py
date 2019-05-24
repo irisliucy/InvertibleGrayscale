@@ -56,7 +56,7 @@ def compute_color_psnr(im_batch1, im_batch2):
         # Convert pixel value to [0,255]
         im1 = 127.5 * (im_batch1[i]+1)
         im2 = 127.5 * (im_batch2[i]+1)
-        print(im1.shape)
+        # print(im1.shape)
         psnr1 = calc_psnr(im1[:,:,0], im2[:,:,0])
         psnr2 = calc_psnr(im1[:,:,1], im2[:,:,1])
         psnr3 = calc_psnr(im1[:,:,2], im2[:,:,2])
@@ -91,8 +91,8 @@ def calc_psnr(im1, im2):
         g_im1 = im1.astype(np.float32)
         g_im2 = im2.astype(np.float32)
     else:
-        g_im1 = np.array(Image.fromarray(im1).convert('L'), np.float32)
-        g_im2 = np.array(Image.fromarray(im2).convert('L'), np.float32)
+        g_im1 = np.array(Image.fromarray(im1.astype('uint8')).convert('L'), np.float32)
+        g_im2 = np.array(Image.fromarray(im2.astype('uint8')).convert('L'), np.float32)
 
     mse = np.mean((g_im1 - g_im2) ** 2)
     if mse == 0:

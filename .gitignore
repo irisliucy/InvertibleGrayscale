@@ -15,3 +15,6 @@ __pycache__/**
  # ignore files inside dir
 logs/**
 resultStorage/**
+
+# virtualenv
+*tf/**
