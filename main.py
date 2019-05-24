@@ -1,29 +1,28 @@
+import os
 import numpy as np
 import tensorflow as tf
 import datetime, time, scipy.io
+import cv2
+
 from tfrecords import *
 from model import *
 from util import *
-import os
+from config import *
+
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
+
 
 # --------------------------------- HYPER-PARAMETERS --------------------------------- #
 in_channels = 3
 out_channels = 3
 n_epochs1 = 90
 n_epochs2 = 30
-batch_size = 8
+batch_size = 4
 learning_rate = 0.0002
 beta1 = 0.9
 
 display_steps = 100
 save_epochs = 10
-src_suffix = 'target'
-dst_suffix = 'target'
-
-img_shape = (256, 256)
-SAMPLE_TEST_MODE = False
-sample_num = 20
-
 
 def gen_list(data_dir):
     file_list = glob.glob(os.path.join(data_dir, '*.*'))
@@ -31,19 +30,19 @@ def gen_list(data_dir):
     file_pair_list = []
     for i, path1 in enumerate(file_list):
         if SAMPLE_TEST_MODE==True:
-            if i < sample_num:
+            if i < NUMBER_OF_SAMPLES:
                 from PIL import Image
                 img = Image.open(path1)
-                img = img.resize(img_shape, Image.ANTIALIAS)
-                print('Saving img of size {} to {}'.format(img_shape, path1))
+                img = img.resize(IMG_SHAPE, Image.ANTIALIAS)
+                print('Saving img of size {} to {}'.format(IMG_SHAPE, path1))
                 img.save(path1)
                 file_pair_list.append(path1)
         else:
-            from PIL import Image
-            img = Image.open(path1)
-            img = img.resize(img_shape, Image.ANTIALIAS)
-            print('Saving img of size {} to {}'.format(img_shape, path1))
-            img.save(path1)
+            # from PIL import Image
+            # img = Image.open(path1)
+            # img = img.resize(IMG_SHAPE, Image.ANTIALIAS)
+            # print('Saving img of size {} to {}'.format(IMG_SHAPE, path1))
+            # img.save(path1)
             file_pair_list.append(path1)
     return file_pair_list
 
@@ -52,29 +51,34 @@ def train(train_list, val_list, debug_mode=True):
     print('Running ColorEncoder -Training!')
     init_start_time = time.time()
     # create folders to save trained model and results
-    graph_dir   = './graph'
-    checkpt_dir = './checkpoints'
-    ouput_dir   = './output'
+    graph_dir   = os.path.join(RESULT_STORAGE_DIR, 'graph')
+    checkpt_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
+    ouput_dir   = os.path.join(RESULT_STORAGE_DIR, 'output')
     record_dir = os.path.join(ouput_dir, 'tfrecords')
     result_loss_dir = os.path.join(ouput_dir, 'loss')
-    result_imgs_dir = os.path.join(ouput_dir, 'resultImgs')
+    result_imgs_dir = os.path.join(ouput_dir, 'train_result_imgs')
     exists_or_mkdir(graph_dir, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
     exists_or_mkdir(record_dir)
     exists_or_mkdir(result_loss_dir, need_remove=False)
-    exists_or_mkdir(result_imgs_dir, need_remove=False)
+    exists_or_mkdir(result_imgs_dir, need_remove=True)
 
 
     # --------------------------------- load data ---------------------------------
+    train_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(train_list)
+    valid_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(val_list)
+    print("Train images:{} \nTest images:{} \nTotal images:{}".format(train_num, valid_num, (train_num + valid_num)))
+
     # data fetched at range: [-1,1]
     # input_imgs, target_imgs, num = input_producer(train_list, in_channels, batch_size, need_shuffle=True)
-    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, img_shape[0], batch_size, need_shuffle=True)
+    input_imgs, target_imgs, num = tfrecord_input_producer(train_list, record_dir, in_channels, IMG_SHAPE[0], batch_size, need_shuffle=True)
 
     latent_imgs = encode(input_imgs, 1, is_train=True, reuse=False)
     pred_imgs = decode(latent_imgs, out_channels, is_train=True, reuse=False)
     if debug_mode:
-        input_val, target_val, num_val = input_producer(val_list, in_channels, batch_size, need_shuffle=False)
+        # input_val, target_val, num_val = input_producer(val_list, in_channels, batch_size, need_shuffle=False)
+        input_val, target_val, num_val = tfrecord_input_producer(train_list, record_dir, in_channels, IMG_SHAPE[0], batch_size, need_shuffle=False)
         latent_val = encode(input_val, 1, is_train=False, reuse=True)
         pred_val = decode(latent_val, out_channels, is_train=False, reuse=True)
 
@@ -83,22 +87,22 @@ def train(train_list, val_list, debug_mode=True):
 
         target_224 = tf.image.resize_images(target_imgs, size=[224, 224], method=0, align_corners=False)
         predict_224 = tf.image.resize_images(latent_imgs, size=[224, 224], method=0, align_corners=False)
-        vgg19_api = VGG19("/home/chuiyiliu3/srv/InvertibleGrayscale/vgg19.npy")
+        vgg19_api = VGG19(os.path.join(CURRENT_DIR, "vgg19.npy"))
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
         # stretch the global contrast to follow color contrast
         vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
-        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/img_shape[0]**2)
-        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/img_shape[0]**2)
+        latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/IMG_SHAPE[0]**2)
+        target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/IMG_SHAPE[0]**2)
         grads_loss = tf.abs(latent_grads-target_grads)
         # control the mapping order similar to normal rgb2gray
         global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
         # quantization loss
-        latent_stack = tf.concat([latent_imgs for t in range(img_shape[0])], axis=3)
+        latent_stack = tf.concat([latent_imgs for t in range(IMG_SHAPE[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
-        quant_stack = np.concatenate([id_mat * t for t in range(img_shape[0])], axis=3)
+        quant_stack = np.concatenate([id_mat * t for t in range(IMG_SHAPE[0])], axis=3)
         quant_stack = (quant_stack / 127.5) - 1
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
@@ -152,8 +156,13 @@ def train(train_list, val_list, debug_mode=True):
         print(">>------------>>> [Training_Num] =%d" % num)
         print(">>------------>>> [Parameter_Num] =%d" % sess.run(num_parameters))
 
+        # print("----- Adding noise to the weights of model ...")
+        # for weight in [train_op1, loss_op1, grads_loss, vgg_loss, global_order_loss]:
+        #     sess.run(add_random_noise(weight))
+
         # -------------------------------- stage one --------------------------------
         for epoch in range(0, n_epochs1):
+            print('---- epoch {}'.format(epoch))
             start_time = time.time()
             epoch_loss, n_iters = 0, 0
             avg_grads, avg_vggs, avg_orders = 0, 0, 0
@@ -252,29 +261,42 @@ def train(train_list, val_list, debug_mode=True):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    save_dir_test = os.path.join("./output/results")
-    exists_or_mkdir(save_dir_test)
-
-	# ------------- Running Options
-    # if run encoder, 3 channel RGB image should be provided in the 'test_list'
-	# if run decoder, 1 channel invertible grayscale image should be provided in the 'test_list'
-    RUN_Encoder = False
+    test_output_dir = os.path.join(RESULT_STORAGE_DIR, 'output')
+    record_dir = os.path.join(test_output_dir, 'tfrecords')
+    save_dir_test_gray = os.path.join(test_output_dir, "test_result_imgs", "invertible_gray")
+    save_dir_test_color = os.path.join(test_output_dir, "test_result_imgs", "restored_rgb")
+    exists_or_mkdir(test_output_dir)
+    exists_or_mkdir(record_dir)
+    exists_or_mkdir(save_dir_test_color)
+    exists_or_mkdir(save_dir_test_gray)
 
     # --------------------------------- set model ---------------------------------
     # data fetched within range: [-1,1]
     if RUN_Encoder:
-	    input_imgs, target_imgs, num = input_producer(test_list, 3, batch_size, need_shuffle=False)
-	    latent_imgs = encode(input_imgs, 1, is_train=False, reuse=False)
+	    # input_imgs, target_imgs, num = input_producer(test_list, 3, batch_size, need_shuffle=False)
+        input_imgs, target_imgs, num = tfrecord_input_producer(test_list,
+                                                            record_dir,
+                                                            3,
+                                                            IMG_SHAPE[0],
+                                                            batch_size,
+                                                            need_shuffle=False)
+        latent_imgs = encode(input_imgs, 1, is_train=False, reuse=False)
     else:
-	    input_imgs, target_imgs, num = input_producer(test_list, 1, batch_size, need_shuffle=False)
-	    restored_imgs = decode(input_imgs, out_channels, is_train=False, reuse=False)
+	    # input_imgs, target_imgs, num = input_producer(test_list, 1, batch_size, need_shuffle=False)
+        input_imgs, target_imgs, num = tfrecord_input_producer(test_list,
+                                                            record_dir,
+                                                            1,
+                                                            IMG_SHAPE[0],
+                                                            batch_size,
+                                                            need_shuffle=False)
+        restored_imgs = decode(input_imgs, out_channels, is_train=False, reuse=False)
 
     # --------------------------------- evaluation ---------------------------------
     # set GPU resources
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = 10
+    num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(test_list)
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -290,18 +312,34 @@ def evaluate(test_list, checkpoint_dir):
             return None
 
         start_time = time.time()
-        print("Total images:%d" % num)
+        print("Total images: %d" % num)
+        print("Image Shape: {}".format(IMG_SHAPE))
+        print("Encoder is running... Converting RGB --> grayscale..." if RUN_Encoder == True else "Decoder is running... Converting grayscale --> RGB...")
+
         cnt = 0
-        while not coord.should_stop():
+        while not coord.should_stop() and cnt <= num:
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
+            # # TODO: Add noise
+            # add noise to weights
+            # for w in list_of_weights:
+            #     sess.run(add_random_noise(w))
+
+            # add noise to image
+            # def add_gaussian_noise(image):
+            #     # image must be scaled in [0, 1]
+            #     with tf.name_scope('Add_gaussian_noise'):
+            #         noise = tf.random_normal(shape=tf.shape(image), mean=0.0, stddev=(50)/(255), dtype=tf.float32)
+            #         noise_img = image + noise
+            #         noise_img = tf.clip_by_value(noise_img, 0.0, 1.0)
+            #     return noise_img
+
             if RUN_Encoder:			# save the synthesized invertible grayscale
-                gray_imgs = sess.run(latent_imgs)
-                save_images_from_batch(gray_imgs, save_dir_test, cnt)
+                invertible_gray_imgs = sess.run(latent_imgs)
+                save_images_from_batch(invertible_gray_imgs, save_dir_test_gray, cnt)
             else:							# save the restored color images
                 color_imgs = sess.run(restored_imgs)
-                save_images_from_batch(color_imgs, save_dir_test, cnt)
-
+                save_images_from_batch(color_imgs, save_dir_test_color, cnt)
             cnt += batch_size
             if cnt >= num:
                 coord.request_stop()
@@ -313,20 +351,28 @@ def evaluate(test_list, checkpoint_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     import argparse
+    from config import *
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='test', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs')
-        val_list = gen_list('/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs')
-        train(train_list, val_list, debug_mode=False)
+        train_list = gen_list(DIR_TO_TRAIN_SET)
+        val_list = gen_list(DIR_TO_VALID_SET)
+        print("Loading train images from {}".format(DIR_TO_TRAIN_SET))
+        print("Loading validation images from {}".format(DIR_TO_VALID_SET))
+        train(train_list, val_list, debug_mode=True)
     elif args.mode == 'test':
-        #test_list = gen_list('./InputColor/')
-        test_list = gen_list('./InvertibelGray/')
-        checkpoint_dir = "checkpoints"
+        checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
+        test_list = gen_list(DIR_TO_TEST_SET)
+        print("Loading test images from {}".format(DIR_TO_TEST_SET))
+
+        # Test rgb gradient
+        # exists_or_mkdir(DIR_TO_TEST_SET + '/test')
+        # generate_rgb_gradient_image(IMG_SHAPE, DIR_TO_TEST_SET + '/test')
+        # test_list = gen_list(DIR_TO_TEST_SET+ '/test')
+
         evaluate(test_list, checkpoint_dir)
     else:
         raise Exception("Unknow --mode")
