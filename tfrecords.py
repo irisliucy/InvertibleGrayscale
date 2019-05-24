@@ -2,8 +2,9 @@ import os
 from PIL import Image
 import tensorflow as tf
 from util import *
+tf.logging.set_verbosity(tf.logging.ERROR) # suppress annoying tf warnings
 
-class SaveRecord(object):
+class SaveTFRecord(object):
     """ Save images to tfrecord files
     Args:
         fileDir (string): images' path
@@ -18,13 +19,11 @@ class SaveRecord(object):
         validRecord = os.path.join(recordDir,'valid.tfrecord')
 
         fileNum = len(fileDir)
-        print('the count of images is ' + str(fileNum))
-
         trainImages = [s.split(' ')[0] for s in fileDir]
 
 #       save data to destinated path
         self.save_data_to_record( fileDir = fileDir, datas = trainImages, recordname = trainRecord)
-        print('A total of {} image(s) have been writted to TFRecord files!'.format(str(fileNum)))
+        print('A total of {} image(s) are written to TFRecord files!'.format(str(fileNum)))
 
     def save_data_to_record(self, fileDir, datas, recordname):
         writer = tf.python_io.TFRecordWriter(recordname) # open the TFRecords file
@@ -32,7 +31,6 @@ class SaveRecord(object):
         for var in datas:
             filename = var.split(' ')[0]
             label = var.split(' ')[-1]
-            print("imglist ==> {} \nlabelist ==> {}".format(filename, label))
             image = Image.open(filename)                # open the image
             image = image.resize((self._imageSize,self._imageSize))
             imageArray = image.tobytes()               # convert to bytes
@@ -54,7 +52,7 @@ class SaveRecord(object):
         Args:
             filename (string): TFRecord filepath
         """
-        print('\nReading and decoding....')
+        print('\nReading and decoding tfrecords....')
     #    create a queue to hold the filenames
         tfrecord_filename = os.path.join(filename,'train.tfrecord')
         filename_queue = tf.train.string_input_producer([tfrecord_filename])
@@ -83,11 +81,15 @@ class SaveRecord(object):
         label = preprocessing(label)
 
     #    batching
-        img_batch, label_batch = tf.train.shuffle_batch([image, label],
+
+        img_batch, label_batch = tf.train.batch([image, label],
                                                     batch_size=self._batchSize,
                                                     num_threads=1,
-                                                    capacity=64,
-                                                    min_after_dequeue=60)
-
-        print('\n tfrecord is read and decoded...')
+                                                    capacity=64)
+    #    batching in random order
+        # img_batch, label_batch = tf.train.shuffle_batch([image, label],
+        #                                             batch_size=self._batchSize,
+        #                                             num_threads=1,
+        #                                             capacity=64,
+        #                                             min_after_dequeue=60)
         return img_batch, label_batch
