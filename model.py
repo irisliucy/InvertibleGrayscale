@@ -149,6 +149,7 @@ def encode(inputs, out_channels, is_train=False, reuse=False):
     with tf.variable_scope("encode", reuse=reuse):
         # in
         n = Conv2d(inputs, 64, filter_size=3, strides=1, padding='SAME', name='in/k3n64s1')
+        n = multiplicative_gaussian_noise_layer(n, 0.2)
         #n = Batchnorm(n, act=tf.nn.relu, is_train=is_train, name='in/BN')
 
         # start residual blocks

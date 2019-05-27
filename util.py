@@ -101,23 +101,35 @@ def calc_psnr(im1, im2):
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
 
-def add_random_noise(w, mean=0.0, stddev=1.0):
+def additive_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
     ''' Add noise to weights of model
     Args:
-        w (tf.Varaible): weights
+        input_layer (tf.Varaible): weights
         mean (float): mean
         stddev (float): standard deviation
     Returns:
         updated values of the weights
     '''
-    variables_shape = tf.shape(w)
+    variables_shape = tf.shape(input_layer)
     noise = tf.random_normal(
         variables_shape,
         mean=mean,
         stddev=stddev,
         dtype=tf.float32,
     )
-    return tf.assign_add(w, noise)
+    return input_layer + noise
+    # return tf.assign_add(input_layer, noise)
+
+def multiplicative_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
+    variables_shape = tf.shape(input_layer)
+    noise = tf.random_normal(
+        variables_shape,
+        mean=mean,
+        stddev=stddev,
+        dtype=tf.float32,
+    )
+    return input_layer + (noise* input_layer)
+
 
 def generate_rgb_gradient_image(img_shape, img_dir):
     import math

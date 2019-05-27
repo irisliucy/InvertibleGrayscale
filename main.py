@@ -354,7 +354,7 @@ if __name__ == "__main__":
     import argparse
     from config import *
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str, default='test', help='train, test')
+    parser.add_argument('--mode', type=str, default='train', help='train, test')
     args = parser.parse_args()
 
     if args.mode == 'train':
