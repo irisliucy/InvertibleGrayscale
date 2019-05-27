@@ -47,7 +47,7 @@ def gen_list(data_dir):
     return file_pair_list
 
 
-def train(train_list, val_list, debug_mode=True):
+def train(train_list, val_list, debug_mode=DEBUG_MODE):
     print('Running ColorEncoder -Training!')
     init_start_time = time.time()
     # create folders to save trained model and results
@@ -362,7 +362,7 @@ if __name__ == "__main__":
         val_list = gen_list(DIR_TO_VALID_SET)
         print("Loading train images from {}".format(DIR_TO_TRAIN_SET))
         print("Loading validation images from {}".format(DIR_TO_VALID_SET))
-        train(train_list, val_list, debug_mode=True)
+        train(train_list, val_list)
     elif args.mode == 'test':
         checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
         test_list = gen_list(DIR_TO_TEST_SET)

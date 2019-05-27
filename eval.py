@@ -41,25 +41,30 @@ print('Processing image batches....')
 print('Source evaluating directory: {}'.format(SOURCE_EVAL_DIR))
 print('Target evaluating directory: {}'.format(TARGET_EVAL_DIR))
 
-for x in glob.glob(os.path.join(SOURCE_EVAL_DIR, '*.*')):
-    src_files.append(x)
-    source_img = cv2.imread(x)
-    source_img_batch.append(source_img)
+eval_list = glob.glob(os.path.join(SOURCE_EVAL_DIR, '*.*'))
+source_evaluation_sample = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(eval_list)
+
+for i, x in enumerate(sorted(eval_list)):
+    if i < source_evaluation_sample:
+        src_files.append(x)
+        source_img = cv2.imread(x)
+        source_img_batch.append(source_img)
     # source_img.close()
 
-for x in glob.glob(os.path.join(TARGET_EVAL_DIR, '*.*')):
+for x in sorted(glob.glob(os.path.join(TARGET_EVAL_DIR, '*.*'))):
     target_files.append(x)
     target_img = cv2.imread(x)
     target_img_batch.append(target_img)
     # target_img.close()
 
-print('Num of source images: {} \n Num of target images: {}'.format(len(src_files), len(target_files)))
-print('Paring Test:', '\n'+src_files[0], '\n'+target_files[0])
+print('Num of source images: {} \nNum of target images: {}'.format(len(src_files), len(target_files)))
+print('Paring Test:', '\n'+src_files[-1], '\n'+target_files[-1])
 
 source_img_batch = np.array(source_img_batch, dtype='float32')
 target_img_batch = np.array(target_img_batch, dtype='float32')
 
-print(len(source_img_batch), source_img_batch.shape)
+print('Number of sample in source batch: {}'.format(len(source_img_batch)))
+print('Number of sample in target batch: {}'.format(len(target_img_batch)))
 
 # compute the result
 print("Computing PSNR....")

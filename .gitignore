@@ -13,7 +13,7 @@ __pycache__/**
 .DS_Store
 
  # ignore files inside dir
-logs/**
+*logs/**
 resultStorage/**
 
 # virtualenv

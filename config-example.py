@@ -29,8 +29,10 @@ IMG_SHAPE = (256, 256)
 SAMPLE_TEST_MODE = False
 NUMBER_OF_SAMPLES = 20
 
+# Training
+DEBUG_MODE = True # Run validation
+
 # Evaluation
-# ------------- Running Options
 # if run encoder (RGB -> Grayscale), 3 channel RGB image should be provided in the 'DIR_TO_TEST_SET'
 # if run decoder (Grayscale -> RGB), 1 channel invertible grayscale image should be provided in the 'DIR_TO_TEST_SET'
 RUN_Encoder = True
