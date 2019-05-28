@@ -4,6 +4,7 @@ import os, glob, shutil, math
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+import datetime
 
 import config
 
@@ -23,6 +24,27 @@ def save_list(save_path, data_list):
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
 
+def save_training_to_file(save_path, total_training_time, train_data_dir, valid_data_dir, train_num, valid_num, num_parameters, batch_size, learning_rate, epoch_num, noise_mode, noise_mean, noise_std):
+    ''' Save the training parameters to text file
+    '''
+    with open(save_path, 'w') as f:
+        f.writelines('Date of training: {}'.format(datetime.datetime.now()))
+        f.writelines('Total training time: {}'.format(total_training_time))
+        f.writelines('Model Version: {}'.format(MODEL_VERSION))
+        f.writelines('Debug Mode (validation): {}'.format(DEBUG_MODE))
+        f.writelines('Training data dir: {}'.format(train_data_dir))
+        f.writelines('Validation data dir: {}'.format(valid_data_dir))
+        f.writelines('Num of training data: {}'.format(train_num))
+        f.writelines('Num of validation data: {}'.format(valid_num))
+        f.writelines('Num of total data: {}'.format(train_num + valid_num))
+        f.writelines('Num of parameters: {}'.format(num_parameters))
+        f.writelines('Image shape: {}'.format((IMG_SHAPE)))
+        f.writelines('Batch Size: {}'.format((batch_size)))
+        f.writelines('Learning rate: {}'.format((learning_rate)))
+        f.writelines('Num of epochs: {}'.format(epoch_num))
+        f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative'.format(noise_mode)) # (N): None, (A): additive noise, (M): multiplicative noise
+        f.writelines('Noise mean: {}, Noise stddev: {}'.format(noise_mean, noise_std))
+    return None
 
 def save_images_from_batch(img_batch, save_dir, init_no):
     if img_batch.shape[-1] == 3:
@@ -130,6 +152,13 @@ def multiplicative_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
     )
     return input_layer + (noise* input_layer)
 
+def add_noise_layer(input_layer, noise_mode='N', mean=0.0, stddev=1.0):
+    if noise_mode == 'A':
+        return additive_gaussian_noise_layer(input_layer, mean, stddev)
+    elif noise_mode == 'M':
+        return multiplicative_gaussian_noise_layer(input_layer, mean, stddev)
+    else: # No noise mode, return original weight
+        return input_layer
 
 def generate_rgb_gradient_image(img_shape, img_dir):
     import math

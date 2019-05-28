@@ -49,6 +49,7 @@ def gen_list(data_dir):
 
 def train(train_list, val_list, debug_mode=DEBUG_MODE):
     print('Running ColorEncoder -Training!')
+    print('Noise Mode (add noise to training): ', TRAINING_NOISE_MODE)
     init_start_time = time.time()
     # create folders to save trained model and results
     graph_dir   = os.path.join(RESULT_STORAGE_DIR, 'graph')
@@ -254,8 +255,21 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         # stop data queue
         coord.request_stop()
         coord.join(threads)
-        print("Training finished! consumes %f sec" % (time.time() - init_start_time))
-
+        total_training_time = time.time() - init_start_time
+        print("Training finished! consumes %f sec" % (total_training_time))
+        save_training_to_file(os.path.join(ouput_dir, "training"),
+                                total_training_time,
+                                DIR_TO_TRAIN_SET,
+                                DIR_TO_VALID_SET,
+                                train_num,
+                                valid_num,
+                                num_parameters,
+                                batch_size,
+                                learning_rate,
+                                (n_epochs1 + n_epochs2),
+                                TRAINING_NOISE_MODE,
+                                TRAINING_NOISE_MEAN,
+                                TRAINING_NOISE_STD)
     return None
 
 
@@ -320,20 +334,6 @@ def evaluate(test_list, checkpoint_dir):
         while not coord.should_stop() and cnt <= num:
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
-            # # TODO: Add noise
-            # add noise to weights
-            # for w in list_of_weights:
-            #     sess.run(add_random_noise(w))
-
-            # add noise to image
-            # def add_gaussian_noise(image):
-            #     # image must be scaled in [0, 1]
-            #     with tf.name_scope('Add_gaussian_noise'):
-            #         noise = tf.random_normal(shape=tf.shape(image), mean=0.0, stddev=(50)/(255), dtype=tf.float32)
-            #         noise_img = image + noise
-            #         noise_img = tf.clip_by_value(noise_img, 0.0, 1.0)
-            #     return noise_img
-
             if RUN_Encoder:			# save the synthesized invertible grayscale
                 invertible_gray_imgs = sess.run(latent_imgs)
                 save_images_from_batch(invertible_gray_imgs, save_dir_test_gray, cnt)
@@ -362,6 +362,10 @@ if __name__ == "__main__":
         val_list = gen_list(DIR_TO_VALID_SET)
         print("Loading train images from {}".format(DIR_TO_TRAIN_SET))
         print("Loading validation images from {}".format(DIR_TO_VALID_SET))
+        while(True):
+            TRAINING_NOISE_MODE =  input('Add noise to the model? (N): None; (A): add additive noise; (M): add multiplicative noise? ')
+            if (TRAINING_NOISE_MODE == 'N') or (TRAINING_NOISE_MODE == 'A') or (TRAINING_NOISE_MODE == 'M'):
+                break
         train(train_list, val_list)
     elif args.mode == 'test':
         checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')

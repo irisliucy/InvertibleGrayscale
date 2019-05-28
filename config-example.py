@@ -31,6 +31,9 @@ NUMBER_OF_SAMPLES = 20
 
 # Training
 DEBUG_MODE = True # Run validation
+TRAINING_NOISE_MODE = 'N'
+TRAINING_NOISE_MEAN = .0 # if TRAINING_NOISE_MODE
+TRAINING_NOISE_STD = .2  # if TRAINING_NOISE_MODE
 
 # Evaluation
 # if run encoder (RGB -> Grayscale), 3 channel RGB image should be provided in the 'DIR_TO_TEST_SET'
