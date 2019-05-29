@@ -1,80 +1,91 @@
-#!/usr/bin/env python
-'''
-    File name: eval.py
-    Description: evaluate the model and write the results to csv
-    Author: Iris Liu
-    Date created: May 23, 2019
-    Python Version: 3.5
-'''
-import os
-import csv
-from PIL import Image
-import numpy as np
-import cv2
 
-from util import *
+'''
+compute PSNR, MAE with tensorflow
+Author: Iris Liu
+Date created: May 29, 2019
+Python Version: 3.5
+'''
+import tensorflow as tf
+import csv
+import sys
+import math
+
 from config import *
 from model import *
-from main import *
-import glob
 
-in_channels = 3
-batch_size = 4
+psnr_result = []
 
-def write_eval_result_2_csv(color_psnr, psnr):
+def write_to_csv(path, data_dict):
+    ''' write result to csv
+    Args:
+        path (string): file directory
+        data_dict (dict): dictionary of data {header: value}
+    '''
     exists_or_mkdir(RESULT_CSV_DIR)
-    # open a file
-    with open(os.path.join(RESULT_CSV_DIR, 'evaluated_result.csv'), 'w') as f:
-        fieldnames = ['Color PSNR', 'PSNR']
+    with open(path, 'w') as f:
+        fieldnames = data_dict.keys()
         file = csv.DictWriter(f, fieldnames = fieldnames)
 
         file.writeheader() # write header
-        file.writerow({'Color PSNR': color_psnr, 'PSNR': psnr})
+        file.writerow(data_dict)
 
-source_img_batch = []
-target_img_batch = []
-src_files = []
-target_files = []
+def read_img(path):
+	return tf.image.decode_image(tf.read_file(path))
 
-print('>>>> Evaluation starts')
-print('Processing image batches....')
-print('Source evaluating directory: {}'.format(SOURCE_EVAL_DIR))
-print('Target evaluating directory: {}'.format(TARGET_EVAL_DIR))
+def psnr(source_imgs, target_imgs):
+    for i in range(len(source_imgs)):  # assume length of source_imgs and target_imgs are the same
+        psnr_val = tf.image.psnr(source_imgs[i], target_imgs[i], max_val=255)
+        psnr_result.append(psnr_val)
+    return psnr_result
 
-eval_list = glob.glob(os.path.join(SOURCE_EVAL_DIR, '*.*'))
-source_evaluation_sample = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(eval_list)
+def mean_absolute_error(source_imgs, target_imgs):
+    # for i in range(len(source_imgs)):  # assume length of source_imgs and target_imgs are the same
+    source_imgs = tf.cast(source_imgs, tf.float32)
+    target_imgs = tf.cast(target_imgs, tf.float32)
+    mae = tf.metrics.mean_absolute_error(source_imgs, target_imgs)
+    return mae
 
-for i, x in enumerate(sorted(eval_list)):
-    if i < source_evaluation_sample:
-        src_files.append(x)
-        source_img = cv2.imread(x)
-        source_img_batch.append(source_img)
-    # source_img.close()
+def main():
+    src_image_list = glob.glob(os.path.join(SOURCE_EVAL_DIR, '*.*'))
+    target_image_list =  glob.glob(os.path.join(TARGET_EVAL_DIR, '*.*'))
 
-for x in sorted(glob.glob(os.path.join(TARGET_EVAL_DIR, '*.*'))):
-    target_files.append(x)
-    target_img = cv2.imread(x)
-    target_img_batch.append(target_img)
-    # target_img.close()
+    # Check if lists are ordered
+    # for i in range(3):
+    #     print(sorted(src_image_list)[i], '\n', sorted(target_image_list)[i])
 
-print('Num of source images: {} \nNum of target images: {}'.format(len(src_files), len(target_files)))
-print('Paring Test:', '\n'+src_files[-1], '\n'+target_files[-1])
+    print("Preparing images....")
+    t1 = [read_img(x) for x in sorted(src_image_list)]
+    t2 = [read_img(x) for x in sorted(target_image_list)]
+    print("source images num: {} \ntarget images num: {}".format(len(t1), len(t2)))
 
-source_img_batch = np.array(source_img_batch, dtype='float32')
-target_img_batch = np.array(target_img_batch, dtype='float32')
+    if len(t1) != len(t2):
+        print("Image lists not comparable! Source list contains {} images and target list contains {} images".format(len(t1), len(t2)))
+        sys.exit()
 
-print('Number of sample in source batch: {}'.format(len(source_img_batch)))
-print('Number of sample in target batch: {}'.format(len(target_img_batch)))
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
 
-# compute the result
-print("Computing PSNR....")
-color_psnr = compute_color_psnr(source_img_batch, target_img_batch)
-psnr = measure_psnr(source_img_batch, target_img_batch)
+        # psnr
+        # print("Computing PSNR....")
+        # psnr_results = sess.run(psnr(t1, t2))
+        # average_psnr = sum(psnr_results) / len(psnr_results)
+        # print("PSNR: {}".format(average_psnr))
 
-print("Color PSNR: {}".format(color_psnr))
-print("PSNR: {}".format(psnr))
-print('Evaluation Completed!')
+        # mae
+        print("Computing MAE....")
+        mae = sess.run(mean_absolute_error(t1, t2))
+        print("MAE: {}".format(mae))
 
-# write the result
-print('Writing result to csv...')
-write_eval_result_2_csv(color_psnr, psnr)
+        # write result to csv
+        print("Writing results to csv....")
+        write_to_csv(os.path.join(RESULT_CSV_DIR, 'evaluated_result.csv'),
+                                    {
+                                    # 'PSNR': average_psnr,
+                                    'MAE': mae
+                                    })
+        print('Evaluation Completed!')
+
+if __name__ == '__main__':
+    print("Evaluation starts.")
+    main()
