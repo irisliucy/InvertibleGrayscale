@@ -202,7 +202,9 @@ def encode(inputs, out_channels, is_train=False, reuse=False):
             nn = Elementwise(n, nn, tf.add, 'eeb_residual_add/%s' % i)
             n = nn
 
-        latent_maps = Conv2d(n, out_channels, filter_size=3, strides=1, act=tf.nn.tanh, padding='SAME', name='latent')
+        # latent_maps = Conv2d(n, out_channels, filter_size=3, strides=1, act=tf.nn.tanh, padding='SAME', name='latent')
+        latent_maps = Conv2d(n, out_channels, filter_size=3, strides=1, act=tf.keras.activations.linear, padding='SAME', name='latent')
+
 
         return latent_maps
 
@@ -221,7 +223,8 @@ def decode(latents, out_channels, is_train=False, reuse=False):
 
         n = Conv2d(n, 256, filter_size=3, strides=1, act=None, padding='SAME', name='n256s1/2')
         n = Conv2d(n, out_channels, filter_size=1, strides=1, padding='SAME', name='out')
-        output_map = tf.nn.tanh(n)
+        # output_map = tf.nn.tanh(n)
+        output_map = tf.keras.activations.linear(n)
 
         return output_map
 
