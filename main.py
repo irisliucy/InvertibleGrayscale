@@ -377,7 +377,6 @@ if __name__ == "__main__":
         #         break
         train(train_list, val_list)
     elif args.mode == 'test':
-        checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
         test_list = gen_list(DIR_TO_TEST_SET)
         print("Loading test images from {}".format(DIR_TO_TEST_SET))
 
@@ -386,6 +385,6 @@ if __name__ == "__main__":
         # generate_rgb_gradient_image(IMG_SHAPE, DIR_TO_TEST_SET + '/test')
         # test_list = gen_list(DIR_TO_TEST_SET+ '/test')
 
-        evaluate(test_list, checkpoint_dir)
+        evaluate(test_list, EVAL_CHECKPOINT_DIR)
     else:
         raise Exception("Unknow --mode")

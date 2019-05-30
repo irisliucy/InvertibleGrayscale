@@ -18,6 +18,7 @@ RESULT_STORAGE_DIR = os.path.join('./resultStorage/', MODEL_VERSION)
 RESULT_CSV_DIR = os.path.join(RESULT_STORAGE_DIR, 'csv')
 SOURCE_EVAL_DIR = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
 TARGET_EVAL_DIR = '/home/chuiyiliu3/srv/InvertibleGrayscale/resultStorage/vgg19v0/output/test_result_imgs/restored_rgb'
+EVAL_CHECKPOINT_DIR = os.path.join(os.path.join(CURRENT_DIR, 'resultStorage', MODEL_VERSION), 'checkpoints')
 
 # GPU settings
 os.environ["CUDA_VISIBLE_DEVICES"] = "5"
