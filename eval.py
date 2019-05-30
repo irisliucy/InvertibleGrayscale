@@ -1,10 +1,14 @@
 
 '''
-compute PSNR with tensorflow
+compute PSNR, MAE with tensorflow
+Author: Iris Liu
+Date created: May 29, 2019
+Python Version: 3.5
 '''
 import tensorflow as tf
 import csv
 import sys
+import math
 
 from config import *
 from model import *
@@ -28,11 +32,18 @@ def write_to_csv(path, data_dict):
 def read_img(path):
 	return tf.image.decode_image(tf.read_file(path))
 
-def psnr(tf_img1, tf_img2):
-    for i in range(len(tf_img1)):
-        psnr_val = tf.image.psnr(tf_img1[i], tf_img2[i], max_val=255)
+def psnr(source_imgs, target_imgs):
+    for i in range(len(source_imgs)):  # assume length of source_imgs and target_imgs are the same
+        psnr_val = tf.image.psnr(source_imgs[i], target_imgs[i], max_val=255)
         psnr_result.append(psnr_val)
     return psnr_result
+
+def mean_absolute_error(source_imgs, target_imgs):
+    # for i in range(len(source_imgs)):  # assume length of source_imgs and target_imgs are the same
+    source_imgs = tf.cast(source_imgs, tf.float32)
+    target_imgs = tf.cast(target_imgs, tf.float32)
+    mae = tf.metrics.mean_absolute_error(source_imgs, target_imgs)
+    return mae
 
 def main():
     src_image_list = glob.glob(os.path.join(SOURCE_EVAL_DIR, '*.*'))
@@ -51,15 +62,28 @@ def main():
         print("Image lists not comparable! Source list contains {} images and target list contains {} images".format(len(t1), len(t2)))
         sys.exit()
 
-    print("Computing PSNR....")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        psnr_results = sess.run(psnr(t1, t2))
-        average_psnr = sum(psnr_results) / len(psnr_results)
-        print("PSNR: {}".format(average_psnr))
+        sess.run(tf.local_variables_initializer())
+
+        # psnr
+        # print("Computing PSNR....")
+        # psnr_results = sess.run(psnr(t1, t2))
+        # average_psnr = sum(psnr_results) / len(psnr_results)
+        # print("PSNR: {}".format(average_psnr))
+
+        # mae
+        print("Computing MAE....")
+        mae = sess.run(mean_absolute_error(t1, t2))
+        print("MAE: {}".format(mae))
+
         # write result to csv
+        print("Writing results to csv....")
         write_to_csv(os.path.join(RESULT_CSV_DIR, 'evaluated_result.csv'),
-                                    {'PSNR': average_psnr})
+                                    {
+                                    # 'PSNR': average_psnr,
+                                    'MAE': mae
+                                    })
         print('Evaluation Completed!')
 
 if __name__ == '__main__':

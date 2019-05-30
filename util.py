@@ -24,26 +24,30 @@ def save_list(save_path, data_list):
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
 
-def save_training_to_file(save_path, total_training_time, train_data_dir, valid_data_dir, train_num, valid_num, num_parameters, batch_size, learning_rate, epoch_num, noise_mode, noise_mean, noise_std):
+def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_num, num_parameters=None, train_data_dir=None, valid_data_dir=None, test_data_dir=None,
+                    train_num=None, valid_num=None, test_num=None):
     ''' Save the training parameters to text file
     '''
     with open(save_path, 'w') as f:
-        f.writelines('Date of training: {}'.format(datetime.datetime.now()))
-        f.writelines('Total training time: {}'.format(total_training_time))
+        f.writelines('Date: {}'.format(datetime.datetime.now()))
+        f.writelines('Total running time: {}'.format(total_time))
         f.writelines('Model Version: {}'.format(MODEL_VERSION))
         f.writelines('Debug Mode (validation): {}'.format(DEBUG_MODE))
-        f.writelines('Training data dir: {}'.format(train_data_dir))
-        f.writelines('Validation data dir: {}'.format(valid_data_dir))
-        f.writelines('Num of training data: {}'.format(train_num))
-        f.writelines('Num of validation data: {}'.format(valid_num))
-        f.writelines('Num of total data: {}'.format(train_num + valid_num))
-        f.writelines('Num of parameters: {}'.format(num_parameters))
+        if train_data_dir: f.writelines('Training data dir: {}'.format(train_data_dir))
+        if valid_data_dir: f.writelines('Validation data dir: {}'.format(valid_data_dir))
+        if test_data_dir: f.writelines('Test data dir: {}'.format(test_data_dir))
+        if train_num: f.writelines('Num of training data: {}'.format(train_num))
+        if valid_num: f.writelines('Num of validation data: {}'.format(valid_num))
+        if test_num: f.writelines('Num of test data: {}'.format(test_num))
+        if (train_num and valid_num): f.writelines('Num of total data: {}'.format(train_num + valid_num))
+        if num_parameters: f.writelines('Num of parameters: {}'.format(num_parameters))
         f.writelines('Image shape: {}'.format((IMG_SHAPE)))
         f.writelines('Batch Size: {}'.format((batch_size)))
         f.writelines('Learning rate: {}'.format((learning_rate)))
         f.writelines('Num of epochs: {}'.format(epoch_num))
-        f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative'.format(noise_mode)) # (N): None, (A): additive noise, (M): multiplicative noise
-        f.writelines('Noise mean: {}, Noise stddev: {}'.format(noise_mean, noise_std))
+        f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative'.format(NOISE_MODE)) # (N): None, (A): additive noise, (M): multiplicative noise
+        f.writelines('Noise value: {}'.format(NOISE_VAL))
+        f.writelines('Noise mean: {}, Noise stddev: {}'.format(NOISE_MEAN, NOISE_STD))
     return None
 
 def save_images_from_batch(img_batch, save_dir, init_no):
@@ -150,7 +154,9 @@ def multiplicative_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
         stddev=stddev,
         dtype=tf.float32,
     )
-    return input_layer + (noise* input_layer)
+    print('noise: ', noise)
+    NOISE_VAL = noise
+    return input_layer + (noise * input_layer)
 
 def add_noise_layer(input_layer, noise_mode='N', mean=0.0, stddev=1.0):
     if noise_mode == 'A':
