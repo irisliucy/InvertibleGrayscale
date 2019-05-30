@@ -349,11 +349,10 @@ def evaluate(test_list, checkpoint_dir):
         total_testing_time = time.time() - start_time
         print("Testing finished! consumes %f sec" % (total_testing_time))
 
-        write_result_file(save_path=os.path.join(ouput_dir, "testing.txt"),
+        write_result_file(save_path=os.path.join(test_output_dir, "testing.txt"),
                                 total_time=total_testing_time,
                                 test_data_dir=DIR_TO_TEST_SET,
                                 test_num=test_num,
-                                num_parameters=num_parameters,
                                 batch_size=batch_size,
                                 learning_rate=learning_rate,
                                 epoch_num=n_epochs1 + n_epochs2
@@ -378,7 +377,6 @@ if __name__ == "__main__":
         #         break
         train(train_list, val_list)
     elif args.mode == 'test':
-        checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
         test_list = gen_list(DIR_TO_TEST_SET)
         print("Loading test images from {}".format(DIR_TO_TEST_SET))
 
@@ -387,6 +385,6 @@ if __name__ == "__main__":
         # generate_rgb_gradient_image(IMG_SHAPE, DIR_TO_TEST_SET + '/test')
         # test_list = gen_list(DIR_TO_TEST_SET+ '/test')
 
-        evaluate(test_list, checkpoint_dir)
+        evaluate(test_list, EVAL_CHECKPOINT_DIR)
     else:
         raise Exception("Unknow --mode")
