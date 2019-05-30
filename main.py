@@ -49,7 +49,7 @@ def gen_list(data_dir):
 
 def train(train_list, val_list, debug_mode=DEBUG_MODE):
     print('Running ColorEncoder -Training!')
-    print('Noise Mode (add noise to training): ', TRAINING_NOISE_MODE)
+    print('Noise Mode (add noise to training): ', NOISE_MODE)
     init_start_time = time.time()
     # create folders to save trained model and results
     graph_dir   = os.path.join(RESULT_STORAGE_DIR, 'graph')
@@ -257,19 +257,18 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         coord.join(threads)
         total_training_time = time.time() - init_start_time
         print("Training finished! consumes %f sec" % (total_training_time))
-        save_training_to_file(os.path.join(ouput_dir, "training"),
-                                total_training_time,
-                                DIR_TO_TRAIN_SET,
-                                DIR_TO_VALID_SET,
-                                train_num,
-                                valid_num,
-                                num_parameters,
-                                batch_size,
-                                learning_rate,
-                                (n_epochs1 + n_epochs2),
-                                TRAINING_NOISE_MODE,
-                                TRAINING_NOISE_MEAN,
-                                TRAINING_NOISE_STD)
+
+        write_result_file(save_path=os.path.join(ouput_dir, "training.txt"),
+                                total_time=total_training_time,
+                                train_data_dir=DIR_TO_TRAIN_SET,
+                                valid_data_dir=DIR_TO_VALID_SET,
+                                train_num=train_num,
+                                valid_num=valid_num,
+                                num_parameters=num_parameters,
+                                batch_size=batch_size,
+                                learning_rate=learning_rate,
+                                epoch_num=n_epochs1 + n_epochs2
+                                )
     return None
 
 
@@ -310,7 +309,7 @@ def evaluate(test_list, checkpoint_dir):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = 0.45
-    num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(test_list)
+    test_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(test_list)
     saver = tf.train.Saver()
     with tf.Session(config=config) as sess:
         coord = tf.train.Coordinator()
@@ -326,12 +325,12 @@ def evaluate(test_list, checkpoint_dir):
             return None
 
         start_time = time.time()
-        print("Total images: %d" % num)
+        print("Total images: %d" % test_num)
         print("Image Shape: {}".format(IMG_SHAPE))
         print("Encoder is running... Converting RGB --> grayscale..." if RUN_Encoder == True else "Decoder is running... Converting grayscale --> RGB...")
 
         cnt = 0
-        while not coord.should_stop() and cnt <= num:
+        while not coord.should_stop() and cnt <= test_num:
             tm = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
             if RUN_Encoder:			# save the synthesized invertible grayscale
@@ -341,13 +340,24 @@ def evaluate(test_list, checkpoint_dir):
                 color_imgs = sess.run(restored_imgs)
                 save_images_from_batch(color_imgs, save_dir_test_color, cnt)
             cnt += batch_size
-            if cnt >= num:
+            if cnt >= test_num:
                 coord.request_stop()
 
         # Wait for threads to finish.
         coord.join(threads)
         sess.close()
-        print("Testing finished! consumes %f sec" % (time.time() - start_time))
+        total_testing_time = time.time() - start_time
+        print("Testing finished! consumes %f sec" % (total_testing_time))
+
+        write_result_file(save_path=os.path.join(ouput_dir, "testing.txt"),
+                                total_time=total_testing_time,
+                                test_data_dir=DIR_TO_TEST_SET,
+                                test_num=test_num,
+                                num_parameters=num_parameters,
+                                batch_size=batch_size,
+                                learning_rate=learning_rate,
+                                epoch_num=n_epochs1 + n_epochs2
+                                )
 
 
 if __name__ == "__main__":
@@ -362,10 +372,10 @@ if __name__ == "__main__":
         val_list = gen_list(DIR_TO_VALID_SET)
         print("Loading train images from {}".format(DIR_TO_TRAIN_SET))
         print("Loading validation images from {}".format(DIR_TO_VALID_SET))
-        while(True):
-            TRAINING_NOISE_MODE =  input('Add noise to the model? (N): None; (A): add additive noise; (M): add multiplicative noise? ')
-            if (TRAINING_NOISE_MODE == 'N') or (TRAINING_NOISE_MODE == 'A') or (TRAINING_NOISE_MODE == 'M'):
-                break
+        # while(True):
+        #     NOISE_MODE =  input('Add noise to the model? (N): None; (A): add additive noise; (M): add multiplicative noise? ')
+        #     if (NOISE_MODE == 'N') or (NOISE_MODE == 'A') or (NOISE_MODE == 'M'):
+        #         break
         train(train_list, val_list)
     elif args.mode == 'test':
         checkpoint_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
