@@ -52,13 +52,12 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
     print('Noise Mode (add noise to training): ', NOISE_MODE)
     init_start_time = time.time()
     # create folders to save trained model and results
-    graph_dir   = os.path.join(RESULT_STORAGE_DIR, 'graph')
     checkpt_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
     ouput_dir   = os.path.join(RESULT_STORAGE_DIR, 'output')
     record_dir = os.path.join(ouput_dir, 'tfrecords')
     result_loss_dir = os.path.join(ouput_dir, 'loss')
     result_imgs_dir = os.path.join(ouput_dir, 'train_result_imgs')
-    exists_or_mkdir(graph_dir, need_remove=True)
+    exists_or_mkdir(RESULT_GRAPH_DIR, need_remove=True)
     exists_or_mkdir(ouput_dir)
     exists_or_mkdir(checkpt_dir)
     exists_or_mkdir(record_dir)
@@ -278,6 +277,7 @@ def evaluate(test_list, checkpoint_dir):
     record_dir = os.path.join(test_output_dir, 'tfrecords')
     save_dir_test_gray = os.path.join(test_output_dir, "test_result_imgs", "invertible_gray")
     save_dir_test_color = os.path.join(test_output_dir, "test_result_imgs", "restored_rgb")
+    exists_or_mkdir(RESULT_GRAPH_DIR, need_remove=True)
     exists_or_mkdir(test_output_dir)
     exists_or_mkdir(record_dir)
     exists_or_mkdir(save_dir_test_color)
@@ -323,6 +323,9 @@ def evaluate(test_list, checkpoint_dir):
         else:
             print('# error: loading checkpoint failed.')
             return None
+
+        # write summary
+        summary_writer = tf.summary.FileWriter(RESULT_GRAPH_DIR, graph=sess.graph)
 
         start_time = time.time()
         print("Total images: %d" % test_num)

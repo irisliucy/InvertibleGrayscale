@@ -18,9 +18,12 @@ def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME',
         in_channels = batch_input.get_shape()[3]
         filters = tf.get_variable('filter', [filter_size, filter_size, in_channels, n_fiter], dtype=tf.float32,
                                   initializer=tf.random_normal_initializer(0, 0.02))
+        filters = (1 + NOISE_VAL)* filters
+        # conv2d() is analogous to xW (multiplying input by weights)
         conv = tf.nn.conv2d(batch_input, filters, [1, strides, strides, 1], padding=padding)
         if act is not None:
-            conv = act(conv)
+            conv = act(conv) # add activation function
+        print("Name: {}, Input: {}, After: {}".format(name, batch_input.shape, conv.shape))
         return conv
 
 
@@ -149,7 +152,7 @@ def encode(inputs, out_channels, is_train=False, reuse=False):
     with tf.variable_scope("encode", reuse=reuse):
         # in
         n = Conv2d(inputs, 64, filter_size=3, strides=1, padding='SAME', name='in/k3n64s1')
-        n = add_noise_layer(n, noise_mode=NOISE_MODE, mean=NOISE_MEAN, stddev=NOISE_STD)
+        # n = add_noise_layer(n, noise_mode=NOISE_MODE, mean=NOISE_MEAN, stddev=NOISE_STD)
         #n = Batchnorm(n, act=tf.nn.relu, is_train=is_train, name='in/BN')
 
         # start residual blocks
@@ -212,8 +215,8 @@ def decode(latents, out_channels, is_train=False, reuse=False):
     with tf.variable_scope("decode", reuse=reuse):
         # Decoder
         n = Conv2d(latents, 64, filter_size=3, strides=1, padding='SAME', name='in/k3n64s1')
-        n = add_noise_layer(n, noise_mode=NOISE_MODE, mean=NOISE_MEAN, stddev=NOISE_STD)
-        
+        # n = add_noise_layer(n, noise_mode=NOISE_MODE, mean=NOISE_MEAN, stddev=NOISE_STD)
+
         for i in range(8):
             nn = Conv2d(n, 64, filter_size=3, strides=1, act=tf.nn.relu, padding='SAME', name='dn64s1/c1/%s' % i)
             #nn = Batchnorm(nn, act=tf.nn.relu, is_train=is_train, name='dn64s1/b1/%s' % i)

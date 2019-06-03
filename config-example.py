@@ -14,7 +14,9 @@ DIR_TO_TRAIN_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_VALID_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_TEST_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
 CURRENT_DIR = '' # '/home/chuiyiliu3/srv/InvertibleGrayscale'
+
 RESULT_STORAGE_DIR = os.path.join('./resultStorage/', MODEL_VERSION)
+RESULT_GRAPH_DIR = os.path.join(RESULT_STORAGE_DIR, 'graph')
 RESULT_CSV_DIR = os.path.join(RESULT_STORAGE_DIR, 'csv')
 SOURCE_EVAL_DIR = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
 TARGET_EVAL_DIR = '/home/chuiyiliu3/srv/InvertibleGrayscale/resultStorage/vgg19v0/output/test_result_imgs/restored_rgb'
