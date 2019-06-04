@@ -9,6 +9,8 @@ import os
 
 MODEL_VERSION = 'vgg19v0'
 
+TRAINING_MODE = True
+
 # Directories & Paths
 DIR_TO_TRAIN_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_VALID_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
