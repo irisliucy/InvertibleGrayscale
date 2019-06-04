@@ -40,7 +40,7 @@ def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_nu
         if train_num: f.writelines('Num of training data: {}\n'.format(train_num))
         if valid_num: f.writelines('Num of validation data: {}\n'.format(valid_num))
         if test_num: f.writelines('Num of test data: {}\n'.format(test_num))
-        if (train_num and valid_num): f.writelines('Num of total data: {}\n'.format(train_num + valid_num))
+        if (train_num and valid_num): f.writelines('Num of total data: {}\n'.format(train_num+valid_num))
         if num_parameters: f.writelines('Num of parameters: {}\n'.format(num_parameters))
         f.writelines('Image shape: {}\n'.format((IMG_SHAPE)))
         f.writelines('Batch Size: {}\n'.format((batch_size)))
@@ -128,7 +128,7 @@ def calc_psnr(im1, im2):
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
 
-def additive_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
+def additive_gaussian_noise_layer(input, mean=0.0, stddev=1.0):
     ''' Add noise to weights of model
     Args:
         input_layer (tf.Varaible): weights
@@ -137,33 +137,35 @@ def additive_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
     Returns:
         updated values of the weights
     '''
-    variables_shape = tf.shape(input_layer)
+    input_shape = tf.shape(input)
     noise = tf.random_normal(
-        variables_shape,
+        input_shape,
         mean=mean,
         stddev=stddev,
         dtype=tf.float32,
     )
-    return input_layer + noise
+    return input + noise
     # return tf.assign_add(input_layer, noise)
 
-def multiplicative_gaussian_noise_layer(input_layer, mean=0.0, stddev=1.0):
-    variables_shape = tf.shape(input_layer)
-    noise = NOISE_VAL
-    # noise = tf.random_normal(
-    #     variables_shape,
-    #     mean=mean,
-    #     stddev=stddev,
-    #     dtype=tf.float32,
-    # )
-    #tf.print("Noise value::", noise, output_stream=sys.stdout)
-    # tf.print("Noise value::", noise, output_stream='file://'+ RESULT_STORAGE_DIR + 'noise_value.txt')
+def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0):
+    # get the shape of the input
+    input_shape = tf.shape(input)
+
+    # outputs random values from a normal distribution
+    noise = tf.random_normal(
+        input_shape,
+        mean=mean,
+        stddev=stddev,
+        dtype=tf.float32,
+    )
+    print("Noise value:", noise.get_shape())
+    tf.print("Noise value:", noise, output_stream=sys.stddout)
     # NOISE_VAL = tf.print("Noise value::",
     #                         noise,
     #                         output_stream=sys.stdout)
-    return input_layer + (noise * input_layer)
+    return (1 + noise) * input
 
-def add_noise_layer(input_layer, noise_mode='N', mean=0.0, stddev=1.0):
+def add_noise(input_layer, noise_mode='N', mean=0.0, stddev=1.0):
     if noise_mode == 'A':
         return additive_gaussian_noise_layer(input_layer, mean, stddev)
     elif noise_mode == 'M':

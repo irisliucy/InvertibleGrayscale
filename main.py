@@ -266,7 +266,7 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
                                 num_parameters=num_parameters,
                                 batch_size=batch_size,
                                 learning_rate=learning_rate,
-                                epoch_num=n_epochs1 + n_epochs2
+                                epoch_num=(n_epochs1+n_epochs2)
                                 )
     return None
 
@@ -368,6 +368,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train', help='train, test')
     args = parser.parse_args()
+    TRAINING_MODE = False if args.mode == 'test' else True
 
     if args.mode == 'train':
         train_list = gen_list(DIR_TO_TRAIN_SET)
