@@ -12,12 +12,13 @@ MODEL_VERSION = 'vgg19v0'
 TRAINING_MODE = True
 
 # Directories & Paths
+CURRENT_DIR = '' # '/home/chuiyiliu3/srv/InvertibleGrayscale'
+RESULT_STORAGE_DIR = os.path.join(CURRENT_DIR, 'resultStorage', MODEL_VERSION)
 DIR_TO_TRAIN_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_VALID_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/train_imgs'
 DIR_TO_TEST_SET = '' # '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
-CURRENT_DIR = '' # '/home/chuiyiliu3/srv/InvertibleGrayscale'
 
-RESULT_STORAGE_DIR = os.path.join('./resultStorage/', MODEL_VERSION)
+RESULT_OUTPUT_DIR = os.path.join(RESULT_STORAGE_DIR, 'output')
 RESULT_GRAPH_DIR = os.path.join(RESULT_STORAGE_DIR, 'graph')
 RESULT_CSV_DIR = os.path.join(RESULT_STORAGE_DIR, 'csv')
 SOURCE_EVAL_DIR = '/home/chuiyiliu3/srv/VOCdevkit/VOC2012/test_imgs'
@@ -36,9 +37,10 @@ NUMBER_OF_SAMPLES = 20
 
 # Noise
 NOISE_MODE = 'M' # M: multiplicative noise, A: additive noise, N: None
-NOISE_VAL = 0.0
+# NOISE_VAL = 0.0
 NOISE_MEAN = .0 # if NOISE_MODE != 'N'
 NOISE_STD = .2  # if NOISE_MODE != 'N'
+NOISE_SCALING_FACTOR = 1.0
 
 # Training
 DEBUG_MODE = True # Run validation

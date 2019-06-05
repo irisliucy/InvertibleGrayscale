@@ -53,12 +53,11 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
     init_start_time = time.time()
     # create folders to save trained model and results
     checkpt_dir = os.path.join(RESULT_STORAGE_DIR, 'checkpoints')
-    ouput_dir   = os.path.join(RESULT_STORAGE_DIR, 'output')
-    record_dir = os.path.join(ouput_dir, 'tfrecords')
-    result_loss_dir = os.path.join(ouput_dir, 'loss')
-    result_imgs_dir = os.path.join(ouput_dir, 'train_result_imgs')
+    record_dir = os.path.join(RESULT_OUTPUT_DIR, 'tfrecords')
+    result_loss_dir = os.path.join(RESULT_OUTPUT_DIR, 'loss')
+    result_imgs_dir = os.path.join(RESULT_OUTPUT_DIR, 'train_result_imgs')
     exists_or_mkdir(RESULT_GRAPH_DIR, need_remove=True)
-    exists_or_mkdir(ouput_dir)
+    exists_or_mkdir(RESULT_OUTPUT_DIR)
     exists_or_mkdir(checkpt_dir)
     exists_or_mkdir(record_dir)
     exists_or_mkdir(result_loss_dir, need_remove=False)
@@ -257,7 +256,7 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         total_training_time = time.time() - init_start_time
         print("Training finished! consumes %f sec" % (total_training_time))
 
-        write_result_file(save_path=os.path.join(ouput_dir, "training.txt"),
+        write_result_file(save_path=os.path.join(RESULT_OUTPUT_DIR, "training.txt"),
                                 total_time=total_training_time,
                                 train_data_dir=DIR_TO_TRAIN_SET,
                                 valid_data_dir=DIR_TO_VALID_SET,
@@ -273,12 +272,11 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    test_output_dir = os.path.join(RESULT_STORAGE_DIR, 'output')
-    record_dir = os.path.join(test_output_dir, 'tfrecords')
-    save_dir_test_gray = os.path.join(test_output_dir, "test_result_imgs", "invertible_gray")
-    save_dir_test_color = os.path.join(test_output_dir, "test_result_imgs", "restored_rgb")
+    record_dir = os.path.join(RESULT_OUTPUT_DIR, 'tfrecords')
+    save_dir_test_gray = os.path.join(RESULT_OUTPUT_DIR, "test_result_imgs", "invertible_gray")
+    save_dir_test_color = os.path.join(RESULT_OUTPUT_DIR, "test_result_imgs", "restored_rgb")
     exists_or_mkdir(RESULT_GRAPH_DIR, need_remove=True)
-    exists_or_mkdir(test_output_dir)
+    exists_or_mkdir(RESULT_OUTPUT_DIR)
     exists_or_mkdir(record_dir)
     exists_or_mkdir(save_dir_test_color)
     exists_or_mkdir(save_dir_test_gray)
@@ -352,13 +350,13 @@ def evaluate(test_list, checkpoint_dir):
         total_testing_time = time.time() - start_time
         print("Testing finished! consumes %f sec" % (total_testing_time))
 
-        write_result_file(save_path=os.path.join(test_output_dir, "testing.txt"),
+        write_result_file(save_path=os.path.join(RESULT_OUTPUT_DIR, "testing.txt"),
                                 total_time=total_testing_time,
                                 test_data_dir=DIR_TO_TEST_SET,
                                 test_num=test_num,
                                 batch_size=batch_size,
                                 learning_rate=learning_rate,
-                                epoch_num=n_epochs1 + n_epochs2
+                                epoch_num=(n_epochs1+n_epochs2)
                                 )
 
 
