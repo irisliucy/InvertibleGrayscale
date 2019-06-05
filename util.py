@@ -48,7 +48,7 @@ def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_nu
         f.writelines('Num of epochs: {}\n'.format(epoch_num))
         f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative\n'.format(NOISE_MODE)) # (N): None, (A): additive noise, (M): multiplicative noise
         f.writelines('Noise value: {}\n'.format(NOISE_VAL))
-        f.writelines('Noise mean: {}, Noise stddev: {}\n'.format(NOISE_MEAN, NOISE_STD))
+        f.writelines('Noise mean: {}, Noise stddev: {}, Noise scaling factor: {}\n'.format(NOISE_MEAN, NOISE_STD, NOISE_SCALING_FACTOR))
     return None
 
 def save_images_from_batch(img_batch, save_dir, init_no):
@@ -147,10 +147,9 @@ def additive_gaussian_noise_layer(input, mean=0.0, stddev=1.0):
     return input + noise
     # return tf.assign_add(input_layer, noise)
 
-def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0):
+def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0, scaling_factor=1.0):
     # get the shape of the input
     input_shape = tf.shape(input)
-
     # outputs random values from a normal distribution
     noise = tf.random_normal(
         input_shape,
@@ -158,18 +157,14 @@ def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0):
         stddev=stddev,
         dtype=tf.float32,
     )
-    print("Noise value:", noise.get_shape())
-    tf.print("Noise value:", noise, output_stream=sys.stddout)
-    # NOISE_VAL = tf.print("Noise value::",
-    #                         noise,
-    #                         output_stream=sys.stdout)
+    noise = noise * scaling_factor
     return (1 + noise) * input
 
-def add_noise(input_layer, noise_mode='N', mean=0.0, stddev=1.0):
+def add_noise(input_layer, noise_mode='N', mean=0.0, stddev=1.0, scaling_fac=1.0):
     if noise_mode == 'A':
         return additive_gaussian_noise_layer(input_layer, mean, stddev)
     elif noise_mode == 'M':
-        return multiplicative_gaussian_noise_layer(input_layer, mean, stddev)
+        return multiplicative_gaussian_noise_layer(input_layer, mean, stddev, scaling_fac)
     else: # No noise mode, return original weight
         return input_layer
 

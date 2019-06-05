@@ -22,9 +22,7 @@ def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME',
 
         # add multiplicative noise to weights in testing
         if TRAINING_MODE == False:
-            # filters = (1 + NOISE_VAL) * filters
-            filters = add_noise(filters, stddev=NOISE_STD)
-            print('Shape of the weights with noise: {}'.format(filters.shape))
+            filters = add_noise(filters, stddev=NOISE_STD, scaling_fac=NOISE_SCALING_FACTOR)
 
         # multiply input by weights (xW) in a fully connected layer
         conv = tf.nn.conv2d(batch_input, filters, [1, strides, strides, 1], padding=padding)
