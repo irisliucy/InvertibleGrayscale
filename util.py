@@ -25,14 +25,15 @@ def save_list(save_path, data_list):
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
 
-def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_num, num_parameters=None, train_data_dir=None, valid_data_dir=None, test_data_dir=None,
+def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_num1, epoch_num2, num_parameters=None, train_data_dir=None, valid_data_dir=None, test_data_dir=None,
                     train_num=None, valid_num=None, test_num=None):
     ''' Save the training parameters to text file
     '''
+    training_mode = ('Training' if TRAINING_MODE == True else 'Testing')
     with open(save_path, 'w') as f:
+        f.writelines('{} in version {}\n'.format(training_mode, MODEL_VERSION))
         f.writelines('Date: {}\n'.format(datetime.datetime.now()))
         f.writelines('Total running time: {}\n'.format(total_time))
-        f.writelines('Model Version: {}\n'.format(MODEL_VERSION))
         f.writelines('Debug Mode (validation): {}\n'.format(DEBUG_MODE))
         if train_data_dir: f.writelines('Training data dir: {}\n'.format(train_data_dir))
         if valid_data_dir: f.writelines('Validation data dir: {}\n'.format(valid_data_dir))
@@ -41,13 +42,12 @@ def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_nu
         if valid_num: f.writelines('Num of validation data: {}\n'.format(valid_num))
         if test_num: f.writelines('Num of test data: {}\n'.format(test_num))
         if (train_num and valid_num): f.writelines('Num of total data: {}\n'.format(train_num+valid_num))
-        if num_parameters: f.writelines('Num of parameters: {}\n'.format(num_parameters))
+        if num_parameters is not None: f.writelines('Num of parameters: {}\n'.format(num_parameters))
         f.writelines('Image shape: {}\n'.format((IMG_SHAPE)))
         f.writelines('Batch Size: {}\n'.format((batch_size)))
         f.writelines('Learning rate: {}\n'.format((learning_rate)))
-        f.writelines('Num of epochs: {}\n'.format(epoch_num))
+        f.writelines('Num of epoch1: {}, Num of epoch1: {}\n'.format(epoch_num1, epoch_num2))
         f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative\n'.format(NOISE_MODE)) # (N): None, (A): additive noise, (M): multiplicative noise
-        f.writelines('Noise value: {}\n'.format(NOISE_VAL))
         f.writelines('Noise mean: {}, Noise stddev: {}, Noise scaling factor: {}\n'.format(NOISE_MEAN, NOISE_STD, NOISE_SCALING_FACTOR))
     return None
 
@@ -147,9 +147,11 @@ def additive_gaussian_noise_layer(input, mean=0.0, stddev=1.0):
     return input + noise
     # return tf.assign_add(input_layer, noise)
 
-def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0, scaling_factor=1.0):
+
+def multiplicative_gaussian_noise_layer(input, mean=0.0, stddev=1.0, scaling_factor=1.0):
     # get the shape of the input
     input_shape = tf.shape(input)
+    # tf.cast(input_shape, tf.float32)
     # outputs random values from a normal distribution
     noise = tf.random_normal(
         input_shape,
@@ -160,6 +162,7 @@ def add_multiplicative_gaussian_noise(input, mean=0.0, stddev=1.0, scaling_facto
     noise = noise * scaling_factor
     return (1 + noise) * input
 
+
 def add_noise(input_layer, noise_mode='N', mean=0.0, stddev=1.0, scaling_fac=1.0):
     if noise_mode == 'A':
         return additive_gaussian_noise_layer(input_layer, mean, stddev)
@@ -167,6 +170,7 @@ def add_noise(input_layer, noise_mode='N', mean=0.0, stddev=1.0, scaling_fac=1.0
         return multiplicative_gaussian_noise_layer(input_layer, mean, stddev, scaling_fac)
     else: # No noise mode, return original weight
         return input_layer
+
 
 def generate_rgb_gradient_image(img_shape, img_dir):
     import math
