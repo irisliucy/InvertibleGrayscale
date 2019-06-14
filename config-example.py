@@ -41,6 +41,7 @@ NOISE_MODE = 'M' # M: multiplicative noise, A: additive noise, N: None
 NOISE_MEAN = .0 # if NOISE_MODE != 'N'
 NOISE_STD = .2  # if NOISE_MODE != 'N'
 NOISE_SCALING_FACTOR = 1.0
+LAMBDA = 0.0001
 
 # Training
 DEBUG_MODE = True # Run validation

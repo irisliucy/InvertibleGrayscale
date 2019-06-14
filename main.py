@@ -83,16 +83,18 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         vgg19_api = VGG19(os.path.join(CURRENT_DIR, "vgg19.npy"))
         vgg_map_targets = vgg19_api.build((target_224 + 1) / 2, is_rgb=True)
         vgg_map_predict = vgg19_api.build((predict_224 + 1) / 2, is_rgb=False)
+        ### greyscale conformity loss
         # stretch the global contrast to follow color contrast
-        vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict)
+        vgg_loss = 1e-7 * tf.losses.mean_squared_error(vgg_map_targets, vgg_map_predict) # contrast loss
         # suppress local patterns
         gray_inputs = tf.image.rgb_to_grayscale(target_imgs)
         latent_grads = tf.reduce_mean(tf.image.total_variation(latent_imgs)/IMG_SHAPE[0]**2)
         target_grads = tf.reduce_mean(tf.image.total_variation(gray_inputs)/IMG_SHAPE[0]**2)
-        grads_loss = tf.abs(latent_grads-target_grads)
+        grads_loss = tf.abs(latent_grads-target_grads) # local structure loss
         # control the mapping order similar to normal rgb2gray
-        global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0
-        # quantization loss
+        global_order_loss = tf.reduce_mean(tf.maximum(70/127.0, tf.abs(gray_inputs-latent_imgs))) - 70/127.0 # lightness loss
+
+        ### quantization loss
         latent_stack = tf.concat([latent_imgs for t in range(IMG_SHAPE[0])], axis=3)
         id_mat = np.ones(shape=(1, 1, 1, 1))
         quant_stack = np.concatenate([id_mat * t for t in range(IMG_SHAPE[0])], axis=3)
@@ -100,10 +102,19 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         quantization_map = tf.reduce_min(tf.abs(latent_stack - quant_stack), axis=3)
         quantization_loss = tf.reduce_mean(quantization_map)
 
-        # reconstruction loss
+        ### invertibility loss
         mse_loss = tf.losses.mean_squared_error(target_imgs, pred_imgs)
-        loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss
-        loss_op2 = 3 * mse_loss + vgg_loss + 0.1*grads_loss + global_order_loss + 10*quantization_loss
+
+        ### L2 regualation on weights
+        weights = tf.get_variable('filter', [1, 1, 256, 3], dtype=tf.float32,
+                                  initializer=tf.random_normal_initializer(0, 0.02))
+        # loss function using L2 Regularization
+        regularizer = tf.nn.l2_loss(weights)
+        l2loss = tf.reduce_mean(LAMBDA * regularizer)
+
+        ### reconstruction loss
+        loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2loss
+        loss_op2 = 3 * mse_loss + vgg_loss + 0.1*grads_loss + global_order_loss + 10*quantization_loss + l2loss
 
     # --------------------------------- solver definition ---------------------------------
     global_step = tf.Variable(0, name='global_step1', trainable=False)
@@ -259,7 +270,8 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
                                 num_parameters=num_parameters,
                                 batch_size=batch_size,
                                 learning_rate=learning_rate,
-                                epoch_num=(n_epochs1+n_epochs2)
+                                epoch_num1=n_epochs1,
+                                epoch_num2=n_epochs2
                                 )
     return None
 
@@ -351,7 +363,8 @@ def evaluate(test_list, checkpoint_dir):
                                 test_num=test_num,
                                 batch_size=batch_size,
                                 learning_rate=learning_rate,
-                                epoch_num=(n_epochs1+n_epochs2)
+                                epoch_num1=n_epochs1,
+                                epoch_num2=n_epochs2
                                 )
 
 

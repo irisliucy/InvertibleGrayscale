@@ -25,7 +25,7 @@ def save_list(save_path, data_list):
         f.writelines([str(data_list[i]) + '\n' for i in range(n)])
     return None
 
-def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_num, num_parameters=None, train_data_dir=None, valid_data_dir=None, test_data_dir=None,
+def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_num1, epoch_num2, num_parameters=None, train_data_dir=None, valid_data_dir=None, test_data_dir=None,
                     train_num=None, valid_num=None, test_num=None):
     ''' Save the training parameters to text file
     '''
@@ -42,11 +42,11 @@ def write_result_file(save_path, total_time, batch_size, learning_rate, epoch_nu
         if valid_num: f.writelines('Num of validation data: {}\n'.format(valid_num))
         if test_num: f.writelines('Num of test data: {}\n'.format(test_num))
         if (train_num and valid_num): f.writelines('Num of total data: {}\n'.format(train_num+valid_num))
-        if num_parameters: f.writelines('Num of parameters: {}\n'.format(num_parameters))
+        if num_parameters is not None: f.writelines('Num of parameters: {}\n'.format(num_parameters))
         f.writelines('Image shape: {}\n'.format((IMG_SHAPE)))
         f.writelines('Batch Size: {}\n'.format((batch_size)))
         f.writelines('Learning rate: {}\n'.format((learning_rate)))
-        f.writelines('Num of epochs: {}\n'.format(epoch_num))
+        f.writelines('Num of epochs 1: {}, Num of epochs 2: {}\n'.format(epoch_num1, epoch_num2))
         f.writelines('Noise Mode: {} , where "N": None, "A": additive, "M": multiplicative\n'.format(NOISE_MODE)) # (N): None, (A): additive noise, (M): multiplicative noise
         f.writelines('Noise mean: {}, Noise stddev: {}, Noise scaling factor: {}\n'.format(NOISE_MEAN, NOISE_STD, NOISE_SCALING_FACTOR))
     return None
