@@ -18,10 +18,10 @@ def Conv2d(batch_input, n_fiter, filter_size, strides, act=None, padding='SAME',
         in_channels = batch_input.get_shape()[3]
         filters = tf.get_variable('filter', [filter_size, filter_size, in_channels, n_fiter], dtype=tf.float32,
                                   initializer=tf.random_normal_initializer(0, 0.02))
-        # tf.Print(filters, [filters], "filters:")
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
-        print(sess.run(filters))
+        # to print the weigths values
+        # sess = tf.Session()
+        # sess.run(tf.global_variables_initializer())
+        # print(sess.run(filters))
         print('Shape of the weights: {}, {}'.format(filters.shape, filters.dtype))
 
         # add multiplicative noise to weights in testing

@@ -110,7 +110,7 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
                                   initializer=tf.random_normal_initializer(0, 0.02))
         # loss function using L2 Regularization
         regularizer = tf.nn.l2_loss(weights)
-        l2loss = tf.reduce_mean(LAMBDA * regularizer)
+        l2loss = LAMBDA * tf.reduce_mean(regularizer)
 
         ### reconstruction loss
         loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2loss
