@@ -105,16 +105,13 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
         ### invertibility loss
         mse_loss = tf.losses.mean_squared_error(target_imgs, pred_imgs)
 
-        ### L2 regualation on weights
-        weights = tf.get_variable('filter', [1, 1, 256, 3], dtype=tf.float32,
-                                  initializer=tf.random_normal_initializer(0, 0.02))
-        # loss function using L2 Regularization
-        regularizer = tf.nn.l2_loss(weights)
-        l2loss = LAMBDA * tf.reduce_mean(regularizer)
+        # add L2 Regularization on each weight
+        l2_norms = [tf.nn.l2_loss(v) for v in tf.trainable_variables()]
+        l2_norm = LAMBDA * tf.reduce_sum(l2_norms)
 
         ### reconstruction loss
-        loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2loss
-        loss_op2 = 3 * mse_loss + vgg_loss + 0.1*grads_loss + global_order_loss + 10*quantization_loss + l2loss
+        loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2_norm
+        loss_op2 = 3 * mse_loss + vgg_loss + 0.1*grads_loss + global_order_loss + 10*quantization_loss + l2_norm
 
     # --------------------------------- solver definition ---------------------------------
     global_step = tf.Variable(0, name='global_step1', trainable=False)
