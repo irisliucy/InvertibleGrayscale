@@ -275,7 +275,7 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
 
 def evaluate(test_list, checkpoint_dir):
     print('Running ColorEncoder -Evaluation!')
-    record_dir = os.path.join(RESULT_OUTPUT_DIR, 'tfrecords')
+    record_dir = os.path.join(RESULT_OUTPUT_DIR, 'evaluate_tfrecords')
     save_dir_test_gray = os.path.join(RESULT_OUTPUT_DIR, "test_result_imgs", "invertible_gray")
     save_dir_test_color = os.path.join(RESULT_OUTPUT_DIR, "test_result_imgs", "restored_rgb")
     exists_or_mkdir(RESULT_GRAPH_DIR, need_remove=True)
@@ -363,7 +363,44 @@ def evaluate(test_list, checkpoint_dir):
                                 epoch_num1=n_epochs1,
                                 epoch_num2=n_epochs2
                                 )
+def test(test_list, target_list, csv_directory):
+    print('Running Evaluation!')
+    record_src_dir = os.path.join(RESULT_OUTPUT_DIR, 'test_src_tfrecords')
+    record_tar_dir = os.path.join(RESULT_OUTPUT_DIR, 'test_tar_tfrecords')
+    exists_or_mkdir(RESULT_OUTPUT_DIR)
+    exists_or_mkdir(record_src_dir)
+    exists_or_mkdir(record_tar_dir)
+    exists_or_mkdir(csv_directory)
+    input_imgs, source_imgs, num = tfrecord_input_producer(test_list,
+                                                        record_src_dir,
+                                                        3,
+                                                        IMG_SHAPE[0],
+                                                        batch_size,
+                                                        need_shuffle=False)
+    restored_color_imgs, target_imgs, num = tfrecord_input_producer(target_list,
+                                                        record_tar_dir,
+                                                        3,
+                                                        IMG_SHAPE[0],
+                                                        batch_size,
+                                                        need_shuffle=False)
+    # source_imgs = tf.cast(source_imgs, tf.float32)
+    # target_imgs = tf.cast(target_imgs, tf.float32)
+    print(source_imgs.dtype, target_imgs.dtype)
+    mae = tf.metrics.mean_absolute_error(source_imgs, target_imgs)
+    # psnr = measure_psnr(source_imgs, target_imgs)
+    print(type(mae))
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
+        sess.run(tf.local_variables_initializer())
+        sess.run(tf.global_variables_initializer())
 
+        # mse
+        print("Computing MAE....")
+        mae = sess.run(mae)
+        print("MAE: {}".format(mae))
+    sess.close()
+    print('Evaluation Completed!')
 
 if __name__ == "__main__":
     import argparse
@@ -378,20 +415,17 @@ if __name__ == "__main__":
         val_list = gen_list(DIR_TO_VALID_SET)
         print("Loading train images from {}".format(DIR_TO_TRAIN_SET))
         print("Loading validation images from {}".format(DIR_TO_VALID_SET))
-        # while(True):
-        #     NOISE_MODE =  input('Add noise to the model? (N): None; (A): add additive noise; (M): add multiplicative noise? ')
-        #     if (NOISE_MODE == 'N') or (NOISE_MODE == 'A') or (NOISE_MODE == 'M'):
-        #         break
         train(train_list, val_list)
     elif args.mode == 'test':
         test_list = gen_list(DIR_TO_TEST_SET)
         print("Loading test images from {}".format(DIR_TO_TEST_SET))
-
-        # Test rgb gradient
-        # exists_or_mkdir(DIR_TO_TEST_SET + '/test')
-        # generate_rgb_gradient_image(IMG_SHAPE, DIR_TO_TEST_SET + '/test')
-        # test_list = gen_list(DIR_TO_TEST_SET+ '/test')
-
         evaluate(test_list, EVAL_CHECKPOINT_DIR)
+    elif args.mode == 'eval':
+        test_list = gen_list(SOURCE_EVAL_DIR)
+        target_list = gen_list(TARGET_EVAL_DIR)
+        print("Preparing images for evaluation....")
+        print("Loading test images from {}".format(SOURCE_EVAL_DIR))
+        print("Loading target images from {}".format(TARGET_EVAL_DIR))
+        test(test_list, target_list, RESULT_CSV_DIR)
     else:
         raise Exception("Unknow --mode")

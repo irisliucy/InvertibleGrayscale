@@ -1,8 +1,8 @@
 
 '''
-Compute PSNR, MAE, MSE with tensorflow
+compute PSNR, MAE with tensorflow
 Author: Iris Liu
-Date created: Jun 20, 2019
+Date created: May 29, 2019
 Python Version: 3.5
 '''
 import tensorflow as tf
@@ -66,20 +66,20 @@ def main():
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        psnr
-        print("Computing PSNR....")
-        psnr_results = sess.run(psnr(t1, t2))
-        average_psnr = sum(psnr_results) / len(psnr_results)
-        print("PSNR: {}".format(average_psnr))
+        # psnr
+        # print("Computing PSNR....")
+        # psnr_results = sess.run(psnr(t1, t2))
+        # average_psnr = sum(psnr_results) / len(psnr_results)
+        # print("PSNR: {}".format(average_psnr))
 
-        # # mae
-        # print("Computing MAE....")
-        # mae = sess.run(mean_absolute_error(t1, t2))
-        # print("MAE: {}".format(mae))
+        # mae
+        print("Computing MAE....")
+        mae = sess.run(mean_absolute_error(t1, t2))
+        print("MAE: {}".format(mae))
 
         # write result to csv
         print("Writing results to csv....")
-        write_to_csv(os.path.join(RESULT_CSV_DIR, 'psnr_result.csv'),
+        write_to_csv(os.path.join(RESULT_CSV_DIR, 'evaluated_result.csv'),
                                     {
                                     # 'PSNR': average_psnr,
                                     'MAE': mae
