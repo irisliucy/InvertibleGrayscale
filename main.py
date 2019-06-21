@@ -339,7 +339,6 @@ def evaluate(test_list, checkpoint_dir):
             print('%s evaluating: [%d - %d]' % (tm, cnt, cnt+batch_size))
             if RUN_Encoder:			# save the synthesized invertible grayscale
                 invertible_gray_imgs = sess.run(latent_imgs)
-                print(invertible_gray_imgs.shape, invertible_gray_imgs.dtype)
                 save_images_from_batch(invertible_gray_imgs, save_dir_test_gray, cnt)
             else:							# save the restored color images
                 color_imgs = sess.run(restored_imgs)
@@ -363,7 +362,7 @@ def evaluate(test_list, checkpoint_dir):
                                 epoch_num1=n_epochs1,
                                 epoch_num2=n_epochs2
                                 )
-def test(test_list, target_list, csv_directory):
+def test(test_list, target_list, csv_directory, checkpoint_dir):
     print('Running Evaluation!')
     record_src_dir = os.path.join(RESULT_OUTPUT_DIR, 'test_src_tfrecords')
     record_tar_dir = os.path.join(RESULT_OUTPUT_DIR, 'test_tar_tfrecords')
@@ -371,34 +370,65 @@ def test(test_list, target_list, csv_directory):
     exists_or_mkdir(record_src_dir)
     exists_or_mkdir(record_tar_dir)
     exists_or_mkdir(csv_directory)
-    input_imgs, source_imgs, num = tfrecord_input_producer(test_list,
-                                                        record_src_dir,
-                                                        3,
-                                                        IMG_SHAPE[0],
-                                                        batch_size,
-                                                        need_shuffle=False)
-    restored_color_imgs, target_imgs, num = tfrecord_input_producer(target_list,
-                                                        record_tar_dir,
-                                                        3,
-                                                        IMG_SHAPE[0],
-                                                        batch_size,
-                                                        need_shuffle=False)
-    # source_imgs = tf.cast(source_imgs, tf.float32)
-    # target_imgs = tf.cast(target_imgs, tf.float32)
-    print(source_imgs.dtype, target_imgs.dtype)
-    mae = tf.metrics.mean_absolute_error(source_imgs, target_imgs)
-    # psnr = measure_psnr(source_imgs, target_imgs)
-    print(type(mae))
+
+
+    with tf.Graph().as_default() as g:
+        input_imgs, source_imgs, num = tfrecord_input_producer(test_list,
+                                                            record_src_dir,
+                                                            3,
+                                                            IMG_SHAPE[0],
+                                                            batch_size,
+                                                            need_shuffle=False)
+        restored_color_imgs, target_imgs, num = tfrecord_input_producer(target_list,
+                                                            record_tar_dir,
+                                                            3,
+                                                            IMG_SHAPE[0],
+                                                            batch_size,
+                                                            need_shuffle=False)
+        # source_imgs = tf.cast(source_imgs, tf.float32)
+        # target_imgs = tf.cast(target_imgs, tf.float32)
+        print(source_imgs.dtype, target_imgs.dtype)
+        print(source_imgs.shape, target_imgs.shape)
+
+        mae, update = tf.metrics.mean_absolute_error(source_imgs, target_imgs)
+        print(type(mae))
+
+
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as sess:
+    #config.gpu_options.per_process_gpu_memory_fraction = 0.45
+    test_num = NUMBER_OF_SAMPLES if SAMPLE_TEST_MODE else len(test_list)
+    saver = tf.train.Saver()
+    with tf.Session(config=config, graph=g) as sess:
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+
         sess.run(tf.local_variables_initializer())
         sess.run(tf.global_variables_initializer())
 
-        # mse
-        print("Computing MAE....")
+        # Restore model weights from previously saved model
+        check_pt = tf.train.get_checkpoint_state(checkpoint_dir)
+        if check_pt and check_pt.model_checkpoint_path:
+            saver.restore(sess, check_pt.model_checkpoint_path)
+            print('model is loaded successfully.')
+        else:
+            print('# error: loading checkpoint failed.')
+            return None
+
+        cnt = 0
+        while not coord.should_stop() and cnt <= test_num:
+            # Calculate the mse
+            print("Computing MAE....")
+            sess.run(update)
+
+            cnt += batch_size
+            if cnt >= test_num:
+                coord.request_stop()
         mae = sess.run(mae)
-        print("MAE: {}".format(mae))
+        print("MAE SCORE: {}".format(mae))
+
+    # Wait for threads to finish.
+    coord.join(threads)
     sess.close()
     print('Evaluation Completed!')
 
@@ -426,6 +456,6 @@ if __name__ == "__main__":
         print("Preparing images for evaluation....")
         print("Loading test images from {}".format(SOURCE_EVAL_DIR))
         print("Loading target images from {}".format(TARGET_EVAL_DIR))
-        test(test_list, target_list, RESULT_CSV_DIR)
+        test(test_list, target_list, RESULT_CSV_DIR, EVAL_CHECKPOINT_DIR)
     else:
         raise Exception("Unknow --mode")
