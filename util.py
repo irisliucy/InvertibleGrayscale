@@ -143,6 +143,7 @@ def additive_gaussian_noise_layer(input, mean=0.0, stddev=1.0):
         mean=mean,
         stddev=stddev,
         dtype=tf.float32,
+        seed=333,
     )
     return input + noise
     # return tf.assign_add(input_layer, noise)
@@ -158,6 +159,7 @@ def multiplicative_gaussian_noise_layer(input, mean=0.0, stddev=1.0, scaling_fac
         mean=mean,
         stddev=stddev,
         dtype=tf.float32,
+        seed=333,
     )
     noise = noise * scaling_factor
     return (1 + noise) * input

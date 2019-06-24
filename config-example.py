@@ -33,7 +33,8 @@ IMG_SHAPE = (256, 256)
 
 # Sample Mode for code testing
 SAMPLE_TEST_MODE = False
-NUMBER_OF_SAMPLES = 20
+CONTROL_FACTOR = 20
+NUMBER_OF_SAMPLES = 30 * CONTROL_FACTOR
 
 # Noise
 NOISE_MODE = 'M' # M: multiplicative noise, A: additive noise, N: None

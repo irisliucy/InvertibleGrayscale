@@ -66,7 +66,7 @@ def main():
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        psnr
+        #psnr
         print("Computing PSNR....")
         psnr_results = sess.run(psnr(t1, t2))
         average_psnr = sum(psnr_results) / len(psnr_results)
