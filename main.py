@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 import datetime, time, scipy.io
 import cv2
+import ray
+import ray.tune as tune
 
 from tfrecords import *
 from model import *
@@ -41,7 +43,7 @@ def gen_list(data_dir):
     return file_pair_list
 
 
-def train(train_list, val_list, debug_mode=DEBUG_MODE):
+def train(train_list, val_list, debug_mode=DEBUG_MODE, config=None, reporter=None):
     print('Running ColorEncoder -Training!')
     print('Noise Mode (add noise to training): ', NOISE_MODE)
     init_start_time = time.time()
@@ -107,7 +109,10 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
 
         # add L2 Regularization on each weight
         l2_norms = [tf.nn.l2_loss(v) for v in tf.trainable_variables()]
-        l2_norm = LAMBDA * tf.reduce_sum(l2_norms)
+        if config != None:
+            l2_norm = config['lamda'] * tf.reduce_sum(l2_norms) # tune lambda
+        else:
+            l2_norm = LAMBDA * tf.reduce_sum(l2_norms)
 
         ### reconstruction loss
         loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2_norm
@@ -237,6 +242,9 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
             print("[*] ----- Epoch: %d/%d | Loss: %4.4f | Time-consumed: %4.3f -----" %
                   (epoch+n_epochs1, n_epochs1+n_epochs2, epoch_loss, (time.time() - start_time)))
 
+            if reporter != None: # reporter for hyperparater tuning
+                    reporter(total_loss=epoch_loss)
+
             if debug_mode:
                 print("----- validating model ...")
                 for idx in range(0, num_val, batch_size):
@@ -251,6 +259,8 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
                 save_list(os.path.join(result_loss_dir, "vggs_loss"), vgg_loss_list)
                 save_list(os.path.join(result_loss_dir, "order_loss"), order_loss_list)
                 save_list(os.path.join(result_loss_dir, "quant_loss"), quanti_loss_list)
+
+
 
         # stop data queue
         coord.request_stop()
@@ -270,6 +280,8 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE):
                                 epoch_num1=n_epochs1,
                                 epoch_num2=n_epochs2
                                 )
+
+
     return None
 
 
@@ -382,8 +394,18 @@ if __name__ == "__main__":
         test_list = gen_list(DIR_TO_TEST_SET)
         print("Loading test images from {}".format(DIR_TO_TEST_SET))
         evaluate(test_list, EVAL_CHECKPOINT_DIR)
+    elif args.mode == 'tune':
+        print("Finetunning parameters....")
+        ray.init()
+        train_list = gen_list(DIR_TO_TRAIN_SET)
+        val_list = gen_list(DIR_TO_VALID_SET)
+        tune.run(train(train_list, val_list),
+            name='l2 lamda',
+            stop={"total_loss": 0},
+            config={
+                "lamda": tune.grid_search([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10])
+                })
     elif args.mode == 'test-all':
-
         # Run encoder
         print('Running Encoder... {}'.format(RUN_Encoder))
         test_list = gen_list(DIR_TO_TEST_SET)
