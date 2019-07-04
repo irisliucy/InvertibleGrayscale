@@ -110,9 +110,9 @@ def train(train_list, val_list, debug_mode=DEBUG_MODE, config=None, reporter=Non
         # add L2 Regularization on each weight
         l2_norms = [tf.nn.l2_loss(v) for v in tf.trainable_variables()]
         if config != None:
-            l2_norm = config['lamda'] * tf.reduce_sum(l2_norms) # tune lambda
+            l2_norm = config['lamda'] * tf.add_n(l2_norms) # tune lambda
         else:
-            l2_norm = LAMBDA * tf.reduce_sum(l2_norms)
+            l2_norm = LAMBDA * tf.add_n(l2_norms)
 
         ### reconstruction loss
         loss_op1 = 3 * mse_loss + vgg_loss + 0.5*grads_loss + global_order_loss + l2_norm
